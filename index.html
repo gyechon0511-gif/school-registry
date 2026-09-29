@@ -13,10 +13,10 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
-  <!-- Babel Standalone (브라우저에서 JSX/React를 직접 실행) -->
+  <!-- Babel Standalone (runs JSX/TS in browser without build tools) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- SheetJS (XLSX) CDN: Excel 파일 다운로드 -->
+  <!-- SheetJS (XLSX) CDN for Excel Export -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
   <style>
@@ -25,7 +25,7 @@
       font-family: 'Noto Sans KR', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
     
-    /* A4 공문서 규격 인쇄 최적화 */
+    /* A4 Print Optimization */
     @media print {
       @page {
         size: A4 portrait;
@@ -73,11 +73,11 @@
 <body class="bg-slate-100 text-slate-800 min-h-screen">
   <div id="root"></div>
 
-  <!-- 브라우저 내부에서 단독 실행되는 메인 React 앱 -->
+  <!-- Main Application Code running via Babel in the browser -->
   <script type="text/babel">
     const { useState, useEffect, useRef, useCallback } = React;
 
-    // --- 초경량 인라인 SVG 아이콘 시스템 ---
+    // --- Embedded Clean SVG Icons (No external font dependency) ---
     const Icon = ({ path, className = "w-4 h-4", fill = "none", stroke = "currentColor", strokeWidth = 2 }) => (
       <svg
         className={className}
@@ -177,7 +177,7 @@
       <Icon className={className} path={<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8" />} />
     );
 
-    // --- 기본 교직원 명부 데이터 (10번 박기민 행정실장님 반영) ---
+    // --- Base Data & Types ---
     const BASE_STAFF_ROSTER = [
       { id: 1, name: '조현식', department: '교장실', position: '교장' },
       { id: 2, name: '하영수', department: '교무실', position: '교무부장' },
@@ -238,14 +238,14 @@
 
     const STORAGE_KEY = 'school_training_sessions_v2';
 
-    // --- Excel (.xlsx) 파일 다운로드 함수 ---
+    // --- Excel (.xlsx) Exporter Utility (uses window.XLSX) ---
     function sanitizeFilename(name) {
       return name.replace(/[\\/:*?"<>|]/g, '_').trim();
     }
 
     function exportTrainingRegisterToExcel(training, allTrainings = []) {
       if (!window.XLSX) {
-        alert('Excel 라이브러리를 준비 중입니다. 잠시 후 다시 시도해주세요.');
+        alert('Excel 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         return;
       }
       const wb = XLSX.utils.book_new();
@@ -256,9 +256,9 @@
 
       const buildSheetData = (list, subTitle) => {
         const data = [
-          [\`\${training.title} 등록부 (\${subTitle})\`],
-          [\`학교명: \${training.school}\`, \`일시: \${training.date} \${training.time || ''}\`, \`장소: \${training.location}\`],
-          [\`주관/강사: \${training.instructor || training.school}\`, \`연수대상: \${training.target || '전 교직원'}\`, \`참석 현황: 총 \${signedCount}명 서명 / 전체 \${totalStaffCount}명 (\${progressPercent}%)\`],
+          [`${training.title} 등록부 (${subTitle})`],
+          [`학교명: ${training.school}`, `일시: ${training.date} ${training.time || ''}`, `장소: ${training.location}`],
+          [`주관/강사: ${training.instructor || training.school}`, `연수대상: ${training.target || '전 교직원'}`, `참석 현황: 총 ${signedCount}명 서명 / 전체 ${totalStaffCount}명 (${progressPercent}%)`],
           [],
           ['연번', '소속', '직위', '성명', '서명 여부', '서명 일시', '비고']
         ];
@@ -276,8 +276,8 @@
         });
 
         data.push([]);
-        data.push([\`위와 같이 \${training.title}에 참석하여 서명하였음을 확인합니다.\`]);
-        data.push([\`\${training.school}장\`]);
+        data.push([`위와 같이 ${training.title}에 참석하여 서명하였음을 확인합니다.`]);
+        data.push([`${training.school}장`]);
 
         const ws = XLSX.utils.aoa_to_sheet(data);
         ws['!cols'] = [
@@ -287,8 +287,8 @@
         return ws;
       };
 
-      XLSX.utils.book_append_sheet(wb, buildSheetData(signedStaffList, \`서명완료자 \${signedCount}명\`), '서명자 명단');
-      XLSX.utils.book_append_sheet(wb, buildSheetData(training.staffList, \`전체 \${totalStaffCount}명\`), '전체 교직원 명단');
+      XLSX.utils.book_append_sheet(wb, buildSheetData(signedStaffList, `서명완료자 ${signedCount}명`), '서명자 명단');
+      XLSX.utils.book_append_sheet(wb, buildSheetData(training.staffList, `전체 ${totalStaffCount}명`), '전체 교직원 명단');
 
       if (allTrainings && allTrainings.length > 0) {
         XLSX.utils.book_append_sheet(wb, buildAllTrainingsSheet(allTrainings), '전체 연수 대장 목록');
@@ -296,13 +296,13 @@
 
       const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const cleanTitle = sanitizeFilename(training.title);
-      XLSX.writeFile(wb, \`\${cleanTitle}_연수등록부_\${todayStr}.xlsx\`);
+      XLSX.writeFile(wb, `${cleanTitle}_연수등록부_${todayStr}.xlsx`);
     }
 
     function buildAllTrainingsSheet(trainings) {
       const data = [
         ['계촌중학교 교직원 연수 개설 및 등록 현황 대장'],
-        [\`기준일자: \${new Date().toLocaleDateString('ko-KR')}\`, \`총 개설 연수: \${trainings.length}건\`],
+        [`기준일자: ${new Date().toLocaleDateString('ko-KR')}`, `총 개설 연수: ${trainings.length}건`],
         [],
         ['연번', '연수 제목', '연수 일시', '시간', '장소', '주관/강사', '연수 대상', '서명 인원', '총 정원', '서명률(%)', '상태']
       ];
@@ -321,7 +321,7 @@
           t.target || '전 교직원',
           signed,
           total,
-          \`\${rate}%\`,
+          `${rate}%`,
           t.status === 'active' ? '진행중' : '완료'
         ]);
       });
@@ -337,17 +337,17 @@
 
     function exportAllTrainingsListToExcel(trainings) {
       if (!window.XLSX) {
-        alert('Excel 라이브러리를 준비 중입니다. 잠시 후 다시 시도해주세요.');
+        alert('Excel 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         return;
       }
       const wb = XLSX.utils.book_new();
       const ws = buildAllTrainingsSheet(trainings);
       XLSX.utils.book_append_sheet(wb, ws, '연수 대장 목록');
       const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      XLSX.writeFile(wb, \`계촌중_교직원_연수대장_목록_\${todayStr}.xlsx\`);
+      XLSX.writeFile(wb, `계촌중_교직원_연수대장_목록_${todayStr}.xlsx`);
     }
 
-    // --- QR 코드 링크 생성 및 모바일 URL 자동 라우팅 ---
+    // --- URL Helper: Bulletproof QR Code target & URL state parser ---
     function buildQrTargetUrl(training) {
       try {
         const origin = window.location.origin;
@@ -367,9 +367,9 @@
         if (training.instructor) params.set('inst', training.instructor);
         if (training.target) params.set('target', training.target);
 
-        return \`\${cleanBase}?\${params.toString()}#sign\`;
+        return `${cleanBase}?${params.toString()}#sign`;
       } catch (e) {
-        return \`\${window.location.origin}/?trainingId=\${encodeURIComponent(training.id)}&view=sign#sign\`;
+        return `${window.location.origin}/?trainingId=${encodeURIComponent(training.id)}&view=sign#sign`;
       }
     }
 
@@ -431,7 +431,7 @@
 
     function createSessionFromMetadata(meta) {
       return {
-        id: meta.id || \`training-\${Date.now()}\`,
+        id: meta.id || `training-${Date.now()}`,
         title: meta.title || '교직원 연수',
         date: meta.date || '2026. 9. 29.(화)',
         time: meta.time || '15:30 ~ 16:30',
@@ -446,7 +446,7 @@
     }
 
     // ==========================================
-    // 1. 모바일 전자서명 화면 (MobileSignView)
+    // Component 1: Mobile Signature Canvas View
     // ==========================================
     function MobileSignView({ training, onBackToDashboard, onSaveSignature, onAddNewStaffAndSign }) {
       const [signMode, setSignMode] = useState('existing');
@@ -630,7 +630,7 @@
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
               <div className="flex items-center gap-2">
                 <CalendarIcon className="w-4 h-4 text-slate-400 shrink-0" />
-                <span>{training.date} {training.time ? \`(\${training.time})\` : ''}</span>
+                <span>{training.date} {training.time ? `(${training.time})` : ''}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPinIcon className="w-4 h-4 text-slate-400 shrink-0" />
@@ -649,18 +649,18 @@
                 <button
                   type="button"
                   onClick={() => { setSignMode('existing'); clearCanvas(); }}
-                  className={\`px-2.5 py-1 rounded-md font-semibold transition-all \${
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
                     signMode === 'existing' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-                  }\`}
+                  }`}
                 >
                   명단에서 선택
                 </button>
                 <button
                   type="button"
                   onClick={() => { setSignMode('custom'); setSelectedStaffId(''); clearCanvas(); }}
-                  className={\`px-2.5 py-1 rounded-md font-semibold transition-all \${
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
                     signMode === 'custom' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-                  }\`}
+                  }`}
                 >
                   직접 추가 (신규)
                 </button>
@@ -753,7 +753,7 @@
             )}
           </div>
 
-          {/* Signature Canvas Pad */}
+          {/* Canvas Card */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -764,13 +764,13 @@
                 <button
                   type="button"
                   onClick={() => setStrokeColor('#0f172a')}
-                  className={\`w-5 h-5 rounded-full bg-slate-900 transition-transform \${strokeColor === '#0f172a' ? 'scale-125 ring-2 ring-indigo-500 ring-offset-2' : ''}\`}
+                  className={`w-5 h-5 rounded-full bg-slate-900 transition-transform ${strokeColor === '#0f172a' ? 'scale-125 ring-2 ring-indigo-500 ring-offset-2' : ''}`}
                   title="검정색 잉크"
                 />
                 <button
                   type="button"
                   onClick={() => setStrokeColor('#1e40af')}
-                  className={\`w-5 h-5 rounded-full bg-blue-800 transition-transform \${strokeColor === '#1e40af' ? 'scale-125 ring-2 ring-indigo-500 ring-offset-2' : ''}\`}
+                  className={`w-5 h-5 rounded-full bg-blue-800 transition-transform ${strokeColor === '#1e40af' ? 'scale-125 ring-2 ring-indigo-500 ring-offset-2' : ''}`}
                   title="파란색 잉크"
                 />
               </div>
@@ -841,7 +841,7 @@
     }
 
     // ==========================================
-    // 2. 관리자 등록부 확인 & A4 인쇄 화면 (AdminTableView)
+    // Component 2: Admin Official Register View
     // ==========================================
     function AdminTableView({ training, allTrainings = [], onBackToDashboard, onResetSignatures }) {
       const staffList = training.staffList || [];
@@ -849,7 +849,6 @@
       const signedCount = signedStaffList.length;
       const progressPercent = staffList.length > 0 ? Math.round((signedCount / staffList.length) * 100) : 0;
 
-      // 기본값: 서명한 사람만 표시 및 인쇄
       const [printFilter, setPrintFilter] = useState('signedOnly');
       const [isExcelMenuOpen, setIsExcelMenuOpen] = useState(false);
       const [downloadSuccessMessage, setDownloadSuccessMessage] = useState(null);
@@ -902,7 +901,7 @@
             </div>
           )}
 
-          {/* 상단 컨트롤 바 (인쇄 시 숨김) */}
+          {/* Action Bar (Hidden on Print) */}
           <div className="print:hidden space-y-4">
             <button
               onClick={onBackToDashboard}
@@ -926,13 +925,13 @@
               </div>
 
               <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-                {/* 필터 토글: 서명자만 vs 전체 명단 */}
+                {/* Print Filter Toggle */}
                 <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
                   <button
                     onClick={() => setPrintFilter('signedOnly')}
-                    className={\`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-all \${
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-all ${
                       printFilter === 'signedOnly' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }\`}
+                    }`}
                   >
                     <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald-600" />
                     <span>서명자만 ({signedCount}명)</span>
@@ -940,16 +939,16 @@
 
                   <button
                     onClick={() => setPrintFilter('all')}
-                    className={\`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-all \${
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-all ${
                       printFilter === 'all' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }\`}
+                    }`}
                   >
                     <UsersIcon className="w-3.5 h-3.5 text-slate-500" />
                     <span>전체 명단 ({staffList.length}명)</span>
                   </button>
                 </div>
 
-                {/* Excel 다운로드 드롭다운 */}
+                {/* Excel Download Dropdown */}
                 <div className="relative" ref={excelMenuRef}>
                   <div className="inline-flex rounded-xl shadow-xs border border-emerald-300 overflow-hidden bg-emerald-50 text-emerald-800">
                     <button
@@ -1003,7 +1002,7 @@
 
                 <button
                   onClick={() => {
-                    if (window.confirm(\`"\${training.title}"의 모든 서명 데이터를 초기화하시겠습니까?\`)) {
+                    if (window.confirm(`"${training.title}"의 모든 서명 데이터를 초기화하시겠습니까?`)) {
                       onResetSignatures(training.id);
                     }
                   }}
@@ -1024,7 +1023,7 @@
             </div>
           </div>
 
-          {/* 진행률 바 (인쇄 시 숨김) */}
+          {/* Progress Bar (Hidden on Print) */}
           <div className="print:hidden bg-white rounded-xl p-4 shadow-sm border border-slate-200">
             <div className="flex justify-between text-xs text-slate-600 mb-1.5 font-medium">
               <span>교직원 서명 진행률</span>
@@ -1035,19 +1034,19 @@
             <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
               <div
                 className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500"
-                style={{ width: \`\${progressPercent}%\` }}
+                style={{ width: `${progressPercent}%` }}
               />
             </div>
           </div>
 
-          {/* 표준 공문서 규격 A4 등록부 서식 */}
+          {/* Official Document Sheet Layout (A4 Formatted) */}
           <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-10 print:p-0 print:border-0 print:shadow-none print:m-0 print:w-full">
             <div className="text-center space-y-2 mb-6 border-b-2 border-slate-900 pb-5">
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
                 {training.title} 등록부
               </h1>
               <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-slate-700 font-medium pt-2">
-                <div><strong>일시:</strong> {training.date} {training.time ? \`(\${training.time})\` : ''}</div>
+                <div><strong>일시:</strong> {training.date} {training.time ? `(${training.time})` : ''}</div>
                 <div><strong>장소:</strong> {training.location}</div>
                 <div>
                   <strong>참석 인원:</strong> 총 {signedCount}명
@@ -1097,7 +1096,7 @@
                             <div className="flex items-center justify-center h-full">
                               <img
                                 src={staff.signature}
-                                alt={\`\${staff.name} 서명\`}
+                                alt={`${staff.name} 서명`}
                                 className="max-h-12 max-w-full object-contain mx-auto mix-blend-multiply"
                               />
                             </div>
@@ -1132,7 +1131,7 @@
     }
 
     // ==========================================
-    // 3. 연수 목록 대장 화면 (TrainingDashboard)
+    // Component 3: Training Dashboard View
     // ==========================================
     function TrainingDashboard({ trainings, onSelectTraining, onCreateTraining, onDeleteTraining, onOpenQrModal }) {
       const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1171,7 +1170,7 @@
 
       return (
         <div className="max-w-6xl mx-auto p-4 sm:p-8 space-y-8">
-          {/* Top Banner */}
+          {/* Top Banner & Stats Overview */}
           <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2">
@@ -1241,7 +1240,7 @@
             </div>
           </div>
 
-          {/* 연수 목록 그리드 */}
+          {/* Training Sessions Grid List */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1270,11 +1269,11 @@
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-3">
                         <span
-                          className={\`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold \${
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                             isCompleted
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                          }\`}
+                          }`}
                         >
                           {isCompleted ? (
                             <>
@@ -1300,7 +1299,7 @@
                           {trainings.length > 1 && (
                             <button
                               onClick={() => {
-                                if (window.confirm(\`"\${t.title}" 연수등록부를 정말 삭제하시겠습니까?\`)) {
+                                if (window.confirm(`"${t.title}" 연수등록부를 정말 삭제하시겠습니까?`)) {
                                   onDeleteTraining(t.id);
                                 }
                               }}
@@ -1323,7 +1322,7 @@
                       <div className="space-y-1.5 text-xs text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
                         <div className="flex items-center gap-2">
                           <CalendarIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{t.date} {t.time ? \`(\${t.time})\` : ''}</span>
+                          <span>{t.date} {t.time ? `(${t.time})` : ''}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <MapPinIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -1348,10 +1347,10 @@
                         </div>
                         <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                           <div
-                            className={\`h-2 rounded-full transition-all duration-500 \${
+                            className={`h-2 rounded-full transition-all duration-500 ${
                               isCompleted ? 'bg-emerald-500' : 'bg-indigo-600'
-                            }\`}
-                            style={{ width: \`\${percent}%\` }}
+                            }`}
+                            style={{ width: `${percent}%` }}
                           />
                         </div>
                       </div>
@@ -1379,7 +1378,7 @@
             </div>
           </div>
 
-          {/* 신규 연수 개설 모달 */}
+          {/* New Training Creation Modal */}
           {isModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
               <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
@@ -1483,14 +1482,14 @@
     }
 
     // ==========================================
-    // 4. 모바일 QR 코드 공유 모달 (QrShareModal)
+    // Component 4: QR Share Modal
     // ==========================================
     function QrShareModal({ isOpen, onClose, training, onNavigateToSign }) {
       const [copied, setCopied] = useState(false);
       if (!isOpen || !training) return null;
 
       const targetUrl = buildQrTargetUrl(training);
-      const qrApiUrl = \`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=12&data=\${encodeURIComponent(targetUrl)}\`;
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=12&data=${encodeURIComponent(targetUrl)}`;
 
       const handleCopyUrl = async () => {
         try {
@@ -1552,7 +1551,7 @@
                 스마트폰 카메라로 위 <strong className="text-indigo-600">QR 코드를 스캔</strong>하세요.
               </p>
               <p className="text-[11px] text-slate-500 leading-normal">
-                카메라를 비추면 상단에 나타나는 링크를 터치 시 <strong>해당 연수의 모바일 서명 화면</strong>으로 즉시 이동합니다.
+                카메라를 비추면 상단에 나타나는 알림/링크를 터치하면 <strong>해당 연수의 모바일 서명 화면</strong>으로 즉시 이동합니다.
               </p>
             </div>
 
@@ -1588,7 +1587,7 @@
     }
 
     // ==========================================
-    // 메인 통합 App 컴포넌트
+    // Main App Component with State Management
     // ==========================================
     function App() {
       const initialUrlInfo = parseTrainingFromUrl();
@@ -1629,7 +1628,6 @@
       });
       const [qrModalTrainingId, setQrModalTrainingId] = useState(null);
 
-      // LocalStorage 영구 동기화
       useEffect(() => {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(trainings));
@@ -1638,7 +1636,7 @@
         }
       }, [trainings]);
 
-      // 브라우저 뒤로가기/앞으로가기 및 URL 파라미터 감지
+      // URL history change listener
       useEffect(() => {
         const handleUrlChange = () => {
           const info = parseTrainingFromUrl();
@@ -1680,7 +1678,7 @@
         const cleanPath = window.location.pathname.endsWith('/')
           ? window.location.pathname
           : window.location.pathname + '/';
-        const newUrl = \`\${cleanPath}?trainingId=\${encodeURIComponent(id)}&view=\${tab}#\${tab}\`;
+        const newUrl = `${cleanPath}?trainingId=${encodeURIComponent(id)}&view=${tab}#${tab}`;
         window.history.pushState(null, '', newUrl);
       };
 
@@ -1694,7 +1692,7 @@
 
       const handleCreateTraining = (data) => {
         const newTraining = {
-          id: \`training-\${Date.now()}\`,
+          id: `training-${Date.now()}`,
           title: data.title,
           date: data.date,
           time: data.time || '15:30 ~ 16:30',
@@ -1722,7 +1720,7 @@
 
       const handleSaveSignature = (trainingId, staffId, signatureDataUrl) => {
         const now = new Date();
-        const formattedDate = \`\${now.getFullYear()}.\${String(now.getMonth() + 1).padStart(2, '0')}.\${String(now.getDate()).padStart(2, '0')} \${String(now.getHours()).padStart(2, '0')}:\${String(now.getMinutes()).padStart(2, '0')}\`;
+        const formattedDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
         setTrainings(prev =>
           prev.map(t =>
@@ -1742,7 +1740,7 @@
 
       const handleAddNewStaffAndSign = (trainingId, newStaff, signatureDataUrl) => {
         const now = new Date();
-        const formattedDate = \`\${now.getFullYear()}.\${String(now.getMonth() + 1).padStart(2, '0')}.\${String(now.getDate()).padStart(2, '0')} \${String(now.getHours()).padStart(2, '0')}:\${String(now.getMinutes()).padStart(2, '0')}\`;
+        const formattedDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
         setTrainings(prev =>
           prev.map(t => {
@@ -1806,9 +1804,9 @@
               <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 text-xs font-semibold">
                 <button
                   onClick={handleBackToDashboard}
-                  className={\`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all \${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
                     currentView === 'dashboard' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }\`}
+                  }`}
                 >
                   <LayersIcon className="w-3.5 h-3.5" />
                   <span>전체 연수 목록</span>
@@ -1818,9 +1816,9 @@
                   <>
                     <button
                       onClick={() => setCurrentView('sign')}
-                      className={\`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all \${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
                         currentView === 'sign' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                      }\`}
+                      }`}
                     >
                       <PenIcon className="w-3.5 h-3.5" />
                       <span>모바일 서명</span>
@@ -1828,9 +1826,9 @@
 
                     <button
                       onClick={() => setCurrentView('admin')}
-                      className={\`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all \${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
                         currentView === 'admin' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                      }\`}
+                      }`}
                     >
                       <TableIcon className="w-3.5 h-3.5" />
                       <span>등록부 확인 & 인쇄</span>
@@ -1905,7 +1903,7 @@
       );
     }
 
-    // React 18 루트 렌더링
+    // Mount to DOM
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
