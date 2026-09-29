@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>학교 교직원 연수 등록부 모바일 전자서명 - 계촌중학교</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    @media print {
+      body {
+        background-color: white !important;
+        color: black !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 15mm 10mm;
+      }
+      table {
+        page-break-inside: auto;
+      }
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Top Navigation Bar (인쇄 시 자동 숨김) -->
+  <header class="no-print sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+      <!-- Title / School Badge -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm">
+          <i data-lucide="school" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <div class="text-xs font-bold text-slate-900 leading-tight flex items-center gap-1.5">
+            <span>계촌중학교 연수 전자서명</span>
+            <span id="badgeProgress" class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded font-semibold">
+              0/13 서명
+            </span>
+          </div>
+          <p class="text-[10px] text-slate-400">교직원 연수 등록부 모바일 서명 시스템</p>
+        </div>
+      </div>
+
+      <!-- Tab Buttons -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 text-xs font-semibold">
+        <button id="tabSignBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm transition-all">
+          <i data-lucide="pen-tool" class="w-3.5 h-3.5"></i>
+          <span>모바일 서명</span>
+        </button>
+        <button id="tabAdminBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all">
+          <i data-lucide="table" class="w-3.5 h-3.5"></i>
+          <span>등록부 확인/인쇄</span>
+        </button>
+      </div>
+
+      <!-- QR Modal Trigger -->
+      <button id="openQrBtn" class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition-colors">
+        <i data-lucide="qr-code" class="w-3.5 h-3.5 text-indigo-600"></i>
+        <span class="hidden sm:inline">QR 공유</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- TAB 1: Mobile Sign View (스마트폰 모바일 서명 화면) -->
+  <main id="viewSign" class="flex-1 max-w-lg w-full mx-auto p-4 pb-16 space-y-4">
+    <!-- Training Info Card -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">
+          <i data-lucide="school" class="w-3.5 h-3.5"></i>
+          계촌중학교
+        </span>
+        <span id="signStatusSummary" class="text-xs font-medium text-slate-500">
+          서명 완료: <strong id="signedCountText" class="text-indigo-600">0</strong> / 13명
+        </span>
+      </div>
+
+      <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-snug mb-3">
+        2026학년도 교직원 부패방지교육
+      </h1>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
+        <div class="flex items-center gap-2">
+          <i data-lucide="calendar" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          <span>일시: 2026. 9. 1.(화) 15:30</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <i data-lucide="map-pin" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          <span>장소: 2층 도서관</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Staff Select Card -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+      <label for="staffSelect" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+        서명자 본인 선택
+      </label>
+      <select id="staffSelect" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium transition-colors">
+        <option value="">-- 본인 성명을 선택해주세요 --</option>
+      </select>
+
+      <div id="staffInfoBadge" class="hidden flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+        <div class="flex items-center gap-1.5">
+          <i data-lucide="user" class="w-4 h-4 text-indigo-600"></i>
+          <span id="badgeStaffName" class="font-bold text-slate-900"></span>
+          <span class="text-slate-400">·</span>
+          <span id="badgeStaffDept" class="text-slate-600"></span>
+          <span class="text-slate-400">·</span>
+          <span id="badgeStaffPos" class="text-slate-600 font-medium"></span>
+        </div>
+        <span id="badgeAlreadySigned" class="hidden text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+          서명 완료됨
+        </span>
+      </div>
+    </div>
+
+    <!-- Canvas Signature Card -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900">전자 서명 (Signature)</h2>
+          <p class="text-[11px] text-slate-500">손가락 또는 터치펜으로 사각 영역 안에 서명하세요.</p>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button id="inkBlack" class="w-5 h-5 rounded-full bg-slate-900 ring-2 ring-indigo-500 ring-offset-2 transition-transform" title="검정색 잉크"></button>
+          <button id="inkBlue" class="w-5 h-5 rounded-full bg-blue-700 hover:scale-110 transition-transform" title="파란색 잉크"></button>
+        </div>
+      </div>
+
+      <!-- 이미 서명된 교직원일 경우 표시되는 카드 -->
+      <div id="alreadySignedBox" class="hidden rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/60 p-6 text-center space-y-2">
+        <i data-lucide="check-circle-2" class="w-9 h-9 text-emerald-600 mx-auto"></i>
+        <div class="text-sm font-bold text-emerald-800">서명이 정상적으로 등록되어 있습니다.</div>
+        <p id="alreadySignedTime" class="text-xs text-emerald-600"></p>
+        <div class="bg-white p-2 rounded-lg border border-emerald-200 shadow-xs max-w-xs mx-auto mt-2">
+          <img id="alreadySignedImg" src="" alt="등록된 서명" class="h-14 mx-auto object-contain">
+        </div>
+      </div>
+
+      <!-- 서명 캔버스 드로잉 영역 -->
+      <div id="drawingArea" class="space-y-3">
+        <div class="relative rounded-xl border-2 border-slate-300 bg-slate-50 overflow-hidden touch-none h-48 sm:h-52">
+          <canvas id="signCanvas" class="w-full h-full cursor-crosshair block"></canvas>
+          <div id="canvasGuideText" class="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-400 text-xs">
+            여기에 서명하세요 (터치 또는 마우스 드래그)
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2.5 pt-1">
+          <button id="clearSignBtn" type="button" class="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>다시 쓰기</span>
+          </button>
+          <button id="submitSignBtn" type="button" disabled class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:pointer-events-none transition-all shadow-sm">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>서명 등록 완료</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 토스트 안내 피드백 -->
+      <div id="successToast" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
+        <i data-lucide="sparkles" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+        <span>서명이 저장되었습니다! 관리자 등록부 화면에 실시간 반영되었습니다.</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- TAB 2: Admin Table & Print View (관리자 등록부 & A4 인쇄 화면) -->
+  <main id="viewAdmin" class="hidden flex-1 max-w-5xl w-full mx-auto p-4 sm:p-8 space-y-6">
+    <!-- Action Controls (인쇄 시 자동 숨김) -->
+    <div class="no-print bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <h2 class="text-base font-bold text-slate-900">교직원 연수 등록부 확인 & A4 인쇄</h2>
+          <span id="tableBadgeProgress" class="text-xs px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            0% (0/13명)
+          </span>
+        </div>
+        <p class="text-xs text-slate-500 mt-0.5">
+          실시간 전자서명 결과가 표에 즉시 기록됩니다. [인쇄하기]를 누르면 공문서 규격 A4로 출력됩니다.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2.5 w-full sm:w-auto">
+        <button id="resetAllBtn" class="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span>전체 초기화</span>
+        </button>
+        <button id="printBtn" class="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-colors">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span>인쇄하기 (A4 출력)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Official Document Sheet Format (A4 인쇄용 공문서 양식) -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-10 print:p-0 print:border-0 print:shadow-none print:w-full">
+      <!-- Document Header -->
+      <div class="text-center space-y-2 mb-6 border-b-2 border-slate-900 pb-5">
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 font-serif">
+          2026학년도 교직원 부패방지교육 등록부
+        </h1>
+        <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-slate-700 font-medium pt-2">
+          <div><strong>일시:</strong> 2026. 9. 1.(화) 15:30</div>
+          <div><strong>장소:</strong> 2층 도서관</div>
+          <div><strong>대상:</strong> 전 교직원 (13명)</div>
+          <div><strong>기관:</strong> 계촌중학교</div>
+        </div>
+      </div>
+
+      <!-- Registration Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse border border-slate-900 text-center text-xs sm:text-sm">
+          <thead>
+            <tr class="bg-slate-100 text-slate-900 border-b border-slate-900 font-bold">
+              <th class="border border-slate-900 py-2 px-1 w-12">연번</th>
+              <th class="border border-slate-900 py-2 px-2 w-28">소속</th>
+              <th class="border border-slate-900 py-2 px-2 w-28">직위</th>
+              <th class="border border-slate-900 py-2 px-2 w-28">성명</th>
+              <th class="border border-slate-900 py-2 px-2 w-44">서명</th>
+              <th class="border border-slate-900 py-2 px-2 w-36">서명일시</th>
+              <th class="border border-slate-900 py-2 px-1 w-20">비고</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- 자바스크립트로 13명 명단 자동 렌더링 -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Document Footer Verification -->
+      <div class="mt-8 pt-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-700">
+        <div>위와 같이 2026학년도 교직원 부패방지교육에 참석하여 서명하였음을 확인합니다.</div>
+        <div class="mt-3 sm:mt-0 font-bold text-sm tracking-widest text-slate-900">
+          계촌중학교장
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- QR Modal -->
+  <div id="qrModal" class="hidden no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 text-center space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 text-indigo-600 font-bold text-sm">
+          <i data-lucide="smartphone" class="w-4 h-4"></i>
+          <span>모바일 서명 QR 코드</span>
+        </div>
+        <button id="closeQrBtn" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl inline-block mx-auto">
+        <img id="qrImage" src="" alt="모바일 서명 QR 코드" class="w-48 h-48 mx-auto rounded-lg">
+      </div>
+
+      <div class="text-xs text-slate-600 leading-relaxed">
+        스마트폰 기본 카메라로 QR 코드를 스캔하면 본 모바일 전자서명 화면으로 즉시 연결됩니다.
+      </div>
+
+      <button id="copyUrlBtn" class="w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center justify-center gap-1.5">
+        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+        <span id="copyUrlText">웹앱 주소 복사하기</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Client-side Logic (Vanilla JS + LocalStorage) -->
+  <script>
+    // 1. 기본 교직원 명단 (13명)
+    const INITIAL_STAFF = [
+      { id: 1, name: '조현식', department: '교장실', position: '교장' },
+      { id: 2, name: '하영수', department: '교무실', position: '교무부장' },
+      { id: 3, name: '김성옥', department: '교무실', position: '교사' },
+      { id: 4, name: '이은영', department: '교무실', position: '교사' },
+      { id: 5, name: '이지현', department: '교무실', position: '교사' },
+      { id: 6, name: '이지연', department: '교무실', position: '연구부장' },
+      { id: 7, name: '최영은', department: '교무실', position: '학생안전부장' },
+      { id: 8, name: '이하늘', department: '교무실', position: '교사' },
+      { id: 9, name: '박미경', department: '교무실', position: '교무행정사' },
+      { id: 10, name: '김기민', department: '교육행정실', position: '교육행정실장' },
+      { id: 11, name: '이수정', department: '교육행정실', position: '주무관' },
+      { id: 12, name: '박혜란', department: '교육행정실', position: '조리실무사' },
+      { id: 13, name: '옥정자', department: '교육행정실', position: '청소원' }
+    ];
+
+    const STORAGE_KEY = 'school_training_signatures_v1';
+    let staffData = [];
+
+    // LocalStorage 로드
+    function loadData() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          staffData = JSON.parse(saved);
+        } else {
+          staffData = JSON.parse(JSON.stringify(INITIAL_STAFF));
+        }
+      } catch (e) {
+        staffData = JSON.parse(JSON.stringify(INITIAL_STAFF));
+      }
+    }
+
+    // LocalStorage 저장
+    function saveData() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(staffData));
+      } catch (e) {
+        console.warn('LocalStorage save failed', e);
+      }
+      renderAll();
+    }
+
+    // 2. UI 엘리먼트 참조
+    const tabSignBtn = document.getElementById('tabSignBtn');
+    const tabAdminBtn = document.getElementById('tabAdminBtn');
+    const viewSign = document.getElementById('viewSign');
+    const viewAdmin = document.getElementById('viewAdmin');
+    const staffSelect = document.getElementById('staffSelect');
+    const staffInfoBadge = document.getElementById('staffInfoBadge');
+    const badgeStaffName = document.getElementById('badgeStaffName');
+    const badgeStaffDept = document.getElementById('badgeStaffDept');
+    const badgeStaffPos = document.getElementById('badgeStaffPos');
+    const badgeAlreadySigned = document.getElementById('badgeAlreadySigned');
+    const drawingArea = document.getElementById('drawingArea');
+    const alreadySignedBox = document.getElementById('alreadySignedBox');
+    const alreadySignedTime = document.getElementById('alreadySignedTime');
+    const alreadySignedImg = document.getElementById('alreadySignedImg');
+    const canvas = document.getElementById('signCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasGuideText = document.getElementById('canvasGuideText');
+    const clearSignBtn = document.getElementById('clearSignBtn');
+    const submitSignBtn = document.getElementById('submitSignBtn');
+    const successToast = document.getElementById('successToast');
+    const badgeProgress = document.getElementById('badgeProgress');
+    const signedCountText = document.getElementById('signedCountText');
+    const tableBadgeProgress = document.getElementById('tableBadgeProgress');
+    const tableBody = document.getElementById('tableBody');
+    const resetAllBtn = document.getElementById('resetAllBtn');
+    const printBtn = document.getElementById('printBtn');
+    const openQrBtn = document.getElementById('openQrBtn');
+    const closeQrBtn = document.getElementById('closeQrBtn');
+    const qrModal = document.getElementById('qrModal');
+    const qrImage = document.getElementById('qrImage');
+    const copyUrlBtn = document.getElementById('copyUrlBtn');
+    const copyUrlText = document.getElementById('copyUrlText');
+    const inkBlack = document.getElementById('inkBlack');
+    const inkBlue = document.getElementById('inkBlue');
+
+    let isDrawing = false;
+    let hasDrawn = false;
+    let strokeColor = '#0f172a';
+    let lastPoint = null;
+
+    // Retina 해상도 지원 Canvas 크기 재계산
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = strokeColor;
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // 좌표 추출 (터치 및 마우스 이벤트 통합)
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      let clientX = e.clientX;
+      let clientY = e.clientY;
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      }
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function startDraw(e) {
+      const selectedId = Number(staffSelect.value);
+      const member = staffData.find(s => s.id === selectedId);
+      if (!member || member.signature) return;
+
+      isDrawing = true;
+      hasDrawn = true;
+      canvasGuideText.classList.add('hidden');
+      submitSignBtn.disabled = false;
+      lastPoint = getCanvasCoords(e);
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      if (e.cancelable) e.preventDefault();
+
+      const currentPoint = getCanvasCoords(e);
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(lastPoint.x, lastPoint.y);
+      ctx.lineTo(currentPoint.x, currentPoint.y);
+      ctx.stroke();
+      lastPoint = currentPoint;
+    }
+
+    function stopDraw() {
+      isDrawing = false;
+      lastPoint = null;
+    }
+
+    function clearCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      hasDrawn = false;
+      canvasGuideText.classList.remove('hidden');
+      submitSignBtn.disabled = true;
+    }
+
+    // 마우스 및 모바일 터치 이벤트 바인딩
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', stopDraw);
+
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    window.addEventListener('touchend', stopDraw);
+
+    clearSignBtn.addEventListener('click', clearCanvas);
+
+    // 잉크 색상 토글
+    inkBlack.addEventListener('click', () => {
+      strokeColor = '#0f172a';
+      inkBlack.className = 'w-5 h-5 rounded-full bg-slate-900 ring-2 ring-indigo-500 ring-offset-2 transition-transform';
+      inkBlue.className = 'w-5 h-5 rounded-full bg-blue-700 hover:scale-110 transition-transform';
+    });
+    inkBlue.addEventListener('click', () => {
+      strokeColor = '#1d4ed8';
+      inkBlue.className = 'w-5 h-5 rounded-full bg-blue-700 ring-2 ring-indigo-500 ring-offset-2 transition-transform';
+      inkBlack.className = 'w-5 h-5 rounded-full bg-slate-900 hover:scale-110 transition-transform';
+    });
+
+    // 서명 대상자 선택 변경 처리
+    staffSelect.addEventListener('change', (e) => {
+      const selectedId = Number(e.target.value);
+      clearCanvas();
+      successToast.classList.add('hidden');
+
+      if (!selectedId) {
+        staffInfoBadge.classList.add('hidden');
+        drawingArea.classList.remove('hidden');
+        alreadySignedBox.classList.add('hidden');
+        return;
+      }
+
+      const member = staffData.find(s => s.id === selectedId);
+      if (!member) return;
+
+      staffInfoBadge.classList.remove('hidden');
+      badgeStaffName.textContent = member.name;
+      badgeStaffDept.textContent = member.department;
+      badgeStaffPos.textContent = member.position;
+
+      if (member.signature) {
+        badgeAlreadySigned.classList.remove('hidden');
+        drawingArea.classList.add('hidden');
+        alreadySignedBox.classList.remove('hidden');
+        alreadySignedTime.textContent = '서명 일시: ' + member.signedAt;
+        alreadySignedImg.src = member.signature;
+      } else {
+        badgeAlreadySigned.classList.add('hidden');
+        drawingArea.classList.remove('hidden');
+        alreadySignedBox.classList.add('hidden');
+      }
+    });
+
+    // 서명 등록 처리
+    submitSignBtn.addEventListener('click', () => {
+      const selectedId = Number(staffSelect.value);
+      const member = staffData.find(s => s.id === selectedId);
+      if (!member) {
+        alert('서명할 본인 성명을 먼저 선택해주세요.');
+        return;
+      }
+      if (!hasDrawn) {
+        alert('서명 패드에 서명을 그려주세요.');
+        return;
+      }
+
+      const now = new Date();
+      const dateStr = now.getFullYear() + '.' +
+        String(now.getMonth() + 1).padStart(2, '0') + '.' +
+        String(now.getDate()).padStart(2, '0') + ' ' +
+        String(now.getHours()).padStart(2, '0') + ':' +
+        String(now.getMinutes()).padStart(2, '0');
+
+      member.signature = canvas.toDataURL('image/png');
+      member.signedAt = dateStr;
+
+      saveData();
+      clearCanvas();
+
+      successToast.classList.remove('hidden');
+      staffSelect.value = '';
+      staffInfoBadge.classList.add('hidden');
+      setTimeout(() => {
+        successToast.classList.add('hidden');
+      }, 4000);
+    });
+
+    // 탭 전환 처리
+    tabSignBtn.addEventListener('click', () => {
+      viewSign.classList.remove('hidden');
+      viewAdmin.classList.add('hidden');
+      tabSignBtn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm transition-all';
+      tabAdminBtn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all';
+      resizeCanvas();
+    });
+
+    tabAdminBtn.addEventListener('click', () => {
+      viewSign.classList.add('hidden');
+      viewAdmin.classList.remove('hidden');
+      tabAdminBtn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm transition-all';
+      tabSignBtn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all';
+    });
+
+    // 전체 서명 초기화
+    resetAllBtn.addEventListener('click', () => {
+      if (confirm('모든 교직원의 서명을 초기화하시겠습니까? 등록된 서명 이미지가 모두 삭제됩니다.')) {
+        staffData = JSON.parse(JSON.stringify(INITIAL_STAFF));
+        saveData();
+        clearCanvas();
+        staffSelect.value = '';
+        staffInfoBadge.classList.add('hidden');
+      }
+    });
+
+    // 인쇄 실행
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+
+    // QR 모달
+    openQrBtn.addEventListener('click', () => {
+      const curUrl = window.location.href;
+      qrImage.src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(curUrl);
+      qrModal.classList.remove('hidden');
+    });
+
+    closeQrBtn.addEventListener('click', () => {
+      qrModal.classList.add('hidden');
+    });
+
+    copyUrlBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        copyUrlText.textContent = '주소 복사 완료!';
+        setTimeout(() => {
+          copyUrlText.textContent = '웹앱 주소 복사하기';
+        }, 2000);
+      } catch (err) {
+        alert('URL: ' + window.location.href);
+      }
+    });
+
+    // 화면 동기화 및 렌더링
+    function renderAll() {
+      const signedCount = staffData.filter(s => s.signature).length;
+      const totalCount = staffData.length;
+      const percent = Math.round((signedCount / totalCount) * 100);
+
+      badgeProgress.textContent = `${signedCount}/${totalCount} 서명`;
+      signedCountText.textContent = signedCount;
+      tableBadgeProgress.textContent = `${percent}% (${signedCount}/${totalCount}명)`;
+
+      // 드롭다운 렌더링
+      const currentSelected = staffSelect.value;
+      staffSelect.innerHTML = '<option value="">-- 본인 성명을 선택해주세요 --</option>';
+      staffData.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.disabled = !!s.signature;
+        opt.textContent = `${s.id}. ${s.name} (${s.department} / ${s.position})${s.signature ? ' [✓ 서명완료]' : ''}`;
+        staffSelect.appendChild(opt);
+      });
+      if (currentSelected) {
+        staffSelect.value = currentSelected;
+      }
+
+      // 등록부 표 렌더링
+      tableBody.innerHTML = '';
+      staffData.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-900/40 hover:bg-slate-50/50';
+
+        tr.innerHTML = `
+          <td class="border border-slate-900 py-2 px-1 font-mono text-slate-600">${s.id}</td>
+          <td class="border border-slate-900 py-2 px-2 text-slate-800">${s.department}</td>
+          <td class="border border-slate-900 py-2 px-2 text-slate-800">${s.position}</td>
+          <td class="border border-slate-900 py-2 px-2 font-semibold text-slate-900">${s.name}</td>
+          <td class="border border-slate-900 py-1.5 px-2 h-14">
+            ${s.signature
+              ? `<img src="${s.signature}" alt="${s.name} 서명" class="max-h-11 max-w-full object-contain mx-auto mix-blend-multiply">`
+              : `<span class="text-slate-300 font-light text-xs no-print">(미서명)</span>`
+            }
+          </td>
+          <td class="border border-slate-900 py-2 px-1 text-[11px] text-slate-600 font-mono">${s.signedAt || '-'}</td>
+          <td class="border border-slate-900 py-2 px-1 text-xs text-slate-500">${s.note || ''}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+
+      // 이미 서명된 교직원이 선택된 상태라면 뷰 업데이트
+      const selectedId = Number(staffSelect.value);
+      if (selectedId) {
+        const member = staffData.find(s => s.id === selectedId);
+        if (member && member.signature) {
+          badgeAlreadySigned.classList.remove('hidden');
+          drawingArea.classList.add('hidden');
+          alreadySignedBox.classList.remove('hidden');
+          alreadySignedTime.textContent = '서명 일시: ' + member.signedAt;
+          alreadySignedImg.src = member.signature;
+        }
+      }
+
+      lucide.createIcons();
+    }
+
+    // 초기 실행
+    loadData();
+    renderAll();
+    resizeCanvas();
+  </script>
+</body>
+</html>
