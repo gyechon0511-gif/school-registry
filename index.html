@@ -316,6 +316,9 @@
     const FilterIcon = ({ className }) => (
       <Icon className={className} path={<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />} />
     );
+    const ImageIcon = ({ className }) => (
+      <Icon className={className} path={<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7m4 0 5 5m-5-5v5h5M9 9h.01M21 15l-5-5L5 21" />} />
+    );
 
     // Official School Emblem Component (Ultra-HD Vector + Custom Upload Image Support)
     const GyechonSchoolLogo = ({ className = 'w-16 h-16' }) => {
@@ -487,6 +490,147 @@
             <ellipse cx="248" cy="343" rx="7" ry="4" fill="#ffffff" opacity="0.6" />
           </g>
         </svg>
+      );
+    };
+
+    // School Logo Modal Component for Single-File HTML
+    const SchoolLogoModal = ({ isOpen, onClose }) => {
+      const [previewUrl, setPreviewUrl] = useState(() => {
+        try {
+          return localStorage.getItem('gyechon_school_custom_logo_v1') || null;
+        } catch {
+          return null;
+        }
+      });
+      const [isSaved, setIsSaved] = useState(false);
+      const fileInputRef = useRef(null);
+
+      if (!isOpen) return null;
+
+      const handleFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+          alert('이미지 파일(PNG, JPG, SVG 등)만 업로드할 수 있습니다.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const result = event.target?.result;
+          if (result) {
+            try {
+              localStorage.setItem('gyechon_school_custom_logo_v1', result);
+              setPreviewUrl(result);
+              setIsSaved(true);
+              window.dispatchEvent(new Event('gyechon-logo-updated'));
+              setTimeout(() => setIsSaved(false), 2500);
+            } catch (err) {
+              alert('이미지 저장 공간이 부족합니다. 용량이 더 작은 이미지를 선택해주세요.');
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const handleResetToVector = () => {
+        try {
+          localStorage.removeItem('gyechon_school_custom_logo_v1');
+          setPreviewUrl(null);
+          setIsSaved(true);
+          window.dispatchEvent(new Event('gyechon-logo-updated'));
+          setTimeout(() => setIsSaved(false), 2000);
+        } catch (e) {
+          console.warn(e);
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <ImageIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">계촌중학교 교표(원형 마크) 설정</h3>
+                  <p className="text-[11px] text-slate-500">관리대장 상단 및 등록부 출력물 우측 상단에 반영됩니다.</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Current Emblem Preview */}
+            <div className="flex flex-col items-center justify-center py-4 px-6 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+              <div className="relative p-2 bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center">
+                <GyechonSchoolLogo className="w-28 h-28 object-contain" />
+              </div>
+              <div className="text-center">
+                <div className="text-xs font-bold text-slate-800">
+                  {previewUrl ? '사용자 등록 고화질 원형 마크 적용 중' : '시스템 초고화질(Ultra-HD) 벡터 교표 적용 중'}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  A4 인쇄 출력 시에도 왜곡이나 깨짐 없이 선명하게 인쇄됩니다.
+                </div>
+              </div>
+            </div>
+
+            {isSaved && (
+              <div className="flex items-center justify-center gap-2 py-2 px-3 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold animate-in fade-in">
+                <CheckIcon className="w-4 h-4 text-emerald-600" />
+                <span>학교 교표 마크가 성공적으로 적용되었습니다!</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="space-y-2.5">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all"
+              >
+                <UploadIcon className="w-4 h-4" />
+                <span>첨부 이미지 파일(계촌중학교_원형마크_고화질.png) 직접 등록하기</span>
+              </button>
+
+              {previewUrl && (
+                <button
+                  type="button"
+                  onClick={handleResetToVector}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs active:scale-95 transition-all"
+                >
+                  <RotateCcwIcon className="w-3.5 h-3.5 text-slate-500" />
+                  <span>기본 초고화질 벡터 교표로 초기화</span>
+                </button>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
       );
     };
 
@@ -1383,7 +1527,7 @@
     // ==========================================
     // Component 2: Admin Official Register View
     // ==========================================
-    function AdminTableView({ training, allTrainings = [], onBackToDashboard, onResetSignatures, onEditTraining, onUpdateScannedFiles }) {
+    function AdminTableView({ training, allTrainings = [], onBackToDashboard, onResetSignatures, onEditTraining, onUpdateScannedFiles, onOpenLogoModal }) {
       const staffList = training.staffList || [];
       const signedStaffList = staffList.filter(s => !!s.signature);
       const signedCount = signedStaffList.length;
@@ -1603,7 +1747,21 @@
           <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-10 print:p-0 print:border-0 print:shadow-none print:m-0 print:w-full">
             <div className="relative text-center space-y-2 mb-6 border-b-2 border-slate-900 pb-5">
               <div className="absolute top-0 right-0 flex items-center justify-end z-10">
-                <GyechonSchoolLogo className="w-16 h-16 sm:w-20 sm:h-20 print:w-16 print:h-16 object-contain drop-shadow-xs" />
+                {onOpenLogoModal ? (
+                  <button
+                    type="button"
+                    onClick={onOpenLogoModal}
+                    className="group relative cursor-pointer p-0.5 rounded-xl hover:bg-slate-100 transition print:p-0"
+                    title="계촌중학교 교표(원형 마크) 설정 및 고화질 이미지 등록"
+                  >
+                    <GyechonSchoolLogo className="w-16 h-16 sm:w-20 sm:h-20 print:w-16 print:h-16 object-contain drop-shadow-xs" />
+                    <span className="print:hidden absolute -bottom-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-slate-900/80 text-white text-[9px] font-bold rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap shadow-sm">
+                      마크 변경
+                    </span>
+                  </button>
+                ) : (
+                  <GyechonSchoolLogo className="w-16 h-16 sm:w-20 sm:h-20 print:w-16 print:h-16 object-contain drop-shadow-xs" />
+                )}
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 pr-20 sm:pr-24 pl-4 sm:pl-8">
                 {training.title} 등록부
@@ -1697,7 +1855,7 @@
     // ==========================================
     // Component 3: Training Dashboard View
     // ==========================================
-    function TrainingDashboard({ trainings, onSelectTraining, onCreateTraining, onEditTraining, onDeleteTraining, onOpenQrModal }) {
+    function TrainingDashboard({ trainings, onSelectTraining, onCreateTraining, onEditTraining, onDeleteTraining, onOpenQrModal, onOpenLogoModal }) {
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [selectedAcademicYear, setSelectedAcademicYear] = useState('all');
       const [viewMode, setViewMode] = useState('table');
@@ -1776,21 +1934,52 @@
                     <span>연수 대장 Excel 다운로드</span>
                   </button>
 
-                  <button
-                    onClick={() => {
-                      setNewAcademicYear(getCurrentAcademicYear());
-                      setNewDate(getKoreanTodayDateString());
-                      setIsModalOpen(true);
-                    }}
-                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs sm:text-sm shadow-lg hover:shadow-indigo-500/25 active:scale-95 transition-all"
-                  >
-                    <PlusIcon className="w-4 h-4" />
-                    <span>신규 연수등록부 개설</span>
-                  </button>
+                  <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                    {onOpenLogoModal && (
+                      <button
+                        type="button"
+                        onClick={onOpenLogoModal}
+                        className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm border border-white/20 backdrop-blur-xs shadow-sm active:scale-95 transition-all"
+                        title="계촌중학교 교표(원형 마크) 설정 및 고화질 이미지 등록"
+                      >
+                        <ImageIcon className="w-4 h-4 text-emerald-300" />
+                        <span>교표(마크) 설정</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        setNewAcademicYear(getCurrentAcademicYear());
+                        setNewDate(getKoreanTodayDateString());
+                        setIsModalOpen(true);
+                      }}
+                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs sm:text-sm shadow-lg hover:shadow-indigo-500/25 active:scale-95 transition-all"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                      <span>신규 연수등록부 개설</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-center p-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg shrink-0 hover:bg-white/15 transition-all">
-                  <GyechonSchoolLogo className="w-20 h-20 sm:w-24 sm:h-24 md:w-26 md:h-26 drop-shadow-md" />
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={onOpenLogoModal}
+                    className="group relative flex items-center justify-center p-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg hover:bg-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer ring-2 ring-transparent hover:ring-amber-300/50"
+                    title="계촌중학교 교표(원형 마크) 설정 및 고화질 이미지 등록 (클릭하여 변경)"
+                  >
+                    <GyechonSchoolLogo className="w-20 h-20 sm:w-24 sm:h-24 md:w-26 md:h-26 drop-shadow-md" />
+                    <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[11px] font-bold transition-opacity">
+                      마크 변경
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onOpenLogoModal}
+                    className="text-[10px] text-indigo-200 hover:text-white underline underline-offset-2 transition-colors cursor-pointer"
+                  >
+                    교표 마크 설정
+                  </button>
                 </div>
               </div>
             </div>
@@ -2688,6 +2877,7 @@
       });
       const [qrModalTrainingId, setQrModalTrainingId] = useState(null);
       const [editingTraining, setEditingTraining] = useState(null);
+      const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
       const [isCloudConnected, setIsCloudConnected] = useState(false);
 
       useEffect(() => {
@@ -3047,6 +3237,17 @@
                   <span>{isCloudConnected ? '클라우드 실시간 동기화' : '로컬 모드'}</span>
                 </div>
 
+                {/* School Emblem Customization Button */}
+                <button
+                  onClick={() => setIsLogoModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors shadow-xs"
+                  title="계촌중학교 교표(원형 마크) 설정 및 고화질 PNG 등록"
+                >
+                  <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="hidden sm:inline">교표(마크) 설정</span>
+                  <span className="sm:hidden">교표</span>
+                </button>
+
                 {currentView !== 'dashboard' && activeTraining ? (
                   <button
                     onClick={() => setQrModalTrainingId(activeTraining.id)}
@@ -3074,6 +3275,7 @@
                 onEditTraining={t => setEditingTraining(t)}
                 onDeleteTraining={handleDeleteTraining}
                 onOpenQrModal={(id) => setQrModalTrainingId(id)}
+                onOpenLogoModal={() => setIsLogoModalOpen(true)}
               />
             )}
 
@@ -3094,6 +3296,7 @@
                 onResetSignatures={handleResetSignatures}
                 onEditTraining={t => setEditingTraining(t)}
                 onUpdateScannedFiles={handleUpdateScannedFiles}
+                onOpenLogoModal={() => setIsLogoModalOpen(true)}
               />
             )}
           </main>
@@ -3117,6 +3320,11 @@
               setActiveTrainingId(trainingId);
               setCurrentView('sign');
             }}
+          />
+
+          <SchoolLogoModal
+            isOpen={isLogoModalOpen}
+            onClose={() => setIsLogoModalOpen(false)}
           />
         </div>
       );
