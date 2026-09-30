@@ -9,15 +9,31 @@
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- React 18 & ReactDOM CDN -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- React 18 & ReactDOM CDN (With automatic CDN fallback) -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script>
+    if (typeof React === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"><\/script>');
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"><\/script>');
+    }
+  </script>
 
   <!-- Babel Standalone (runs JSX/TS in browser without build tools) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    if (typeof Babel === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.10/babel.min.js"><\/script>');
+    }
+  </script>
 
   <!-- SheetJS (XLSX) CDN for Excel Export -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script>
+    if (typeof XLSX === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>');
+    }
+  </script>
 
   <!-- Firebase App & Firestore CDN (v10 Modular for Real-Time Cross-Device Cloud Sync) -->
   <script type="module">
@@ -95,13 +111,93 @@
       }
     }
   </style>
+  <script>
+    window.addEventListener('error', function(e) {
+      console.error('System script error:', e);
+      var target = document.getElementById('app-loader') || document.getElementById('root') || document.body;
+      if (target) {
+        target.innerHTML = '<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; background: #f8fafc;">' +
+          '<div style="max-width: 480px; width: 100%; background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #fee2e2; text-align: left;">' +
+          '<div style="color: #dc2626; font-weight: bold; font-size: 15px; margin-bottom: 8px;">⚠️ 페이지 로딩 중 오류가 발생했습니다</div>' +
+          '<div style="font-size: 12px; color: #475569; margin-bottom: 12px; line-height: 1.5;">인터넷 연결 상태(CDN 리소스)를 확인하시거나 브라우저를 새로고침(F5) 해주세요.</div>' +
+          '<div style="background: #fef2f2; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 11px; color: #b91c1c; word-break: break-all; margin-bottom: 14px;">' + (e.message || (e.error && e.error.message) || 'Script error') + '</div>' +
+          '<div style="display: flex; gap: 8px;">' +
+          '<button onclick="location.reload()" style="padding: 8px 16px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;">새로고침</button>' +
+          '<button onclick="try{localStorage.clear()}catch(err){}location.reload()" style="padding: 8px 16px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;">데이터 초기화 후 재시작</button>' +
+          '</div>' +
+          '</div>' +
+          '</div>';
+      }
+    });
+  </script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
-  <div id="root"></div>
+  <div id="root">
+    <div id="app-loader" style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 20px; background-color: #f8fafc;">
+      <div style="width: 44px; height: 44px; border: 4px solid #e2e8f0; border-top-color: #4f46e5; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px;"></div>
+      <div style="font-weight: 700; color: #1e293b; font-size: 15px; margin-bottom: 6px;">계촌중학교 교직원 연수 시스템 로딩 중...</div>
+      <div style="font-size: 12px; color: #64748b;">시스템 리소스를 준비하고 있습니다. 잠시만 기다려주세요.</div>
+      <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+    </div>
+  </div>
 
   <!-- Main Application Code running via Babel in the browser -->
   <script type="text/babel">
-    const { useState, useEffect, useRef, useCallback } = React;
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    // React Error Boundary to prevent white screen
+    class ErrorBoundary extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+      }
+      static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+      }
+      componentDidCatch(error, info) {
+        console.error('ErrorBoundary caught error:', error, info);
+      }
+      render() {
+        if (this.state.hasError) {
+          return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+              <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-rose-200 p-6 text-center space-y-4">
+                <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold">
+                  ⚠️
+                </div>
+                <h2 className="text-base font-bold text-slate-800">화면 표시 중 오류가 발생했습니다</h2>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  임시 캐시 또는 데이터 형식 문제일 수 있습니다. 아래 버튼을 눌러 새로고침하시거나 데이터를 초기화해주세요.
+                </p>
+                <div className="p-3 bg-rose-50 rounded-xl text-left text-xs font-mono text-rose-700 max-h-36 overflow-auto break-all">
+                  {this.state.error?.message || String(this.state.error)}
+                </div>
+                <div className="flex gap-2 justify-center pt-2">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                  >
+                    새로고침
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm('저장된 데이터를 초기화하고 기본 연수 목록으로 재시작하시겠습니까?')) {
+                        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                        window.location.reload();
+                      }
+                    }}
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition"
+                  >
+                    데이터 초기화 재실행
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return this.props.children;
+      }
+    }
 
     // --- Embedded Clean SVG Icons (No external font dependency) ---
     const Icon = ({ path, className = "w-4 h-4", fill = "none", stroke = "currentColor", strokeWidth = 2 }) => (
@@ -205,9 +301,6 @@
     const FileTextIcon = ({ className }) => (
       <Icon className={className} path={<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8" />} />
     );
-    const TableIcon = ({ className }) => (
-      <Icon className={className} path={<path d="M12 3v18M3 9h18M3 15h18M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />} />
-    );
     const LayoutGridIcon = ({ className }) => (
       <Icon className={className} path={<path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />} />
     );
@@ -224,104 +317,178 @@
       <Icon className={className} path={<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />} />
     );
 
-    // Official School Emblem SVG
-    const GyechonSchoolLogo = ({ className = 'w-16 h-16' }) => (
-      <svg
-        viewBox="0 0 500 500"
-        className={className}
-        xmlns="http://www.w3.org/2000/svg"
-        role="img"
-        aria-label="계촌중학교 교표 원형 마크"
-      >
-        <title>계촌중학교 교표 원형 마크</title>
-        <defs>
-          <path id="gen-gyechon-top-arc" d="M 68 250 A 182 182 0 1 1 432 250" fill="none" />
-          <path id="gen-gyechon-bottom-arc" d="M 72 250 A 178 178 0 0 0 428 250" fill="none" />
-          <linearGradient id="gen-goldRibbonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fbc02d" />
-            <stop offset="50%" stopColor="#f59e0b" />
-            <stop offset="100%" stopColor="#d97706" />
-          </linearGradient>
-        </defs>
-        <circle cx="250" cy="250" r="242" fill="#0e6e3c" stroke="#ffffff" strokeWidth="6" />
-        <circle cx="250" cy="250" r="236" fill="none" stroke="#ffffff" strokeWidth="2.5" />
-        <circle cx="250" cy="250" r="156" fill="#ffffff" stroke="#ffffff" strokeWidth="6" />
-        <circle cx="250" cy="250" r="153" fill="none" stroke="#0e6e3c" strokeWidth="1.5" />
-        <text
-          fill="#ffffff"
-          fontFamily="'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"
-          fontSize="43"
-          fontWeight="900"
-          letterSpacing="18"
+    // Official School Emblem Component (Ultra-HD Vector + Custom Upload Image Support)
+    const GyechonSchoolLogo = ({ className = 'w-16 h-16' }) => {
+      const [customLogo, setCustomLogo] = useState(() => {
+        try {
+          return localStorage.getItem('gyechon_school_custom_logo_v1') || null;
+        } catch {
+          return null;
+        }
+      });
+
+      useEffect(() => {
+        const update = () => {
+          try {
+            setCustomLogo(localStorage.getItem('gyechon_school_custom_logo_v1') || null);
+          } catch {}
+        };
+        window.addEventListener('gyechon-logo-updated', update);
+        window.addEventListener('storage', update);
+        return () => {
+          window.removeEventListener('gyechon-logo-updated', update);
+          window.removeEventListener('storage', update);
+        };
+      }, []);
+
+      if (customLogo) {
+        return (
+          <img
+            src={customLogo}
+            alt="계촌중학교 교표 원형 마크"
+            className={className + ' object-contain rounded-full shadow-xs'}
+            title="계촌중학교 교표 원형 마크"
+          />
+        );
+      }
+
+      return (
+        <svg
+          viewBox="0 0 500 500"
+          className={className}
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label="계촌중학교 교표 원형 마크"
         >
-          <textPath href="#gen-gyechon-top-arc" startOffset="50%" textAnchor="middle">
-            계 촌 중 학 교
-          </textPath>
-        </text>
-        <circle cx="65" cy="250" r="10.5" fill="#ffffff" />
-        <circle cx="435" cy="250" r="10.5" fill="#ffffff" />
-        <text
-          fill="#ffffff"
-          fontFamily="'Arial', 'Helvetica', 'Segoe UI', sans-serif"
-          fontSize="34"
-          fontWeight="800"
-          letterSpacing="2"
-        >
-          <textPath href="#gen-gyechon-bottom-arc" startOffset="50%" textAnchor="middle">
-            Gyechon middle school
-          </textPath>
-        </text>
-        <g strokeLinecap="round" strokeLinejoin="round">
-          <g fill="#21a344" stroke="#178033" strokeWidth="1.5">
-            <path d="M 205 345 C 190 340, 175 325, 170 310 C 178 316, 192 328, 205 345 Z" />
-            <path d="M 180 330 C 160 322, 150 305, 142 290 C 152 297, 168 310, 180 330 Z" />
-            <path d="M 160 305 C 140 295, 130 275, 126 255 C 137 265, 150 285, 160 305 Z" />
-            <path d="M 148 275 C 130 260, 122 240, 122 220 C 132 232, 144 252, 148 275 Z" />
-            <path d="M 145 240 C 130 220, 126 200, 130 180 C 139 196, 147 218, 145 240 Z" />
-            <path d="M 152 205 C 140 185, 142 165, 150 148 C 157 165, 160 185, 152 205 Z" />
-            <path d="M 168 175 C 160 155, 168 138, 180 125 C 182 142, 180 160, 168 175 Z" />
-            <path d="M 190 152 C 185 135, 198 120, 212 110 C 210 128, 202 142, 190 152 Z" />
-            <path d="M 188 300 C 176 290, 172 278, 175 266 C 182 276, 188 288, 188 300 Z" fill="#2eb853" />
-            <path d="M 172 260 C 162 250, 160 236, 165 224 C 171 234, 176 248, 172 260 Z" fill="#2eb853" />
-            <path d="M 170 220 C 164 206, 168 194, 176 184 C 180 196, 178 209, 170 220 Z" fill="#2eb853" />
-            <path d="M 182 185 C 180 170, 188 160, 198 152 C 198 165, 192 176, 182 185 Z" fill="#2eb853" />
+          <title>계촌중학교 교표 원형 마크</title>
+          <defs>
+            <path id="gen-gyechon-top-arc-hd" d="M 68 250 A 182 182 0 1 1 432 250" fill="none" />
+            <path id="gen-gyechon-bottom-arc-hd" d="M 72 250 A 178 178 0 0 0 428 250" fill="none" />
+            <linearGradient id="gen-goldRibbonGradHD" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fff3b0" />
+              <stop offset="25%" stopColor="#f59e0b" />
+              <stop offset="70%" stopColor="#d97706" />
+              <stop offset="100%" stopColor="#92400e" />
+            </linearGradient>
+            <linearGradient id="gen-goldEmblemGradHD" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#fef08a" />
+              <stop offset="35%" stopColor="#f59e0b" />
+              <stop offset="85%" stopColor="#d97706" />
+              <stop offset="100%" stopColor="#b45309" />
+            </linearGradient>
+            <linearGradient id="gen-greenRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0d6837" />
+              <stop offset="50%" stopColor="#0a522b" />
+              <stop offset="100%" stopColor="#06381d" />
+            </linearGradient>
+          </defs>
+
+          {/* Outer Deep Emerald Ring */}
+          <circle cx="250" cy="250" r="244" fill="url(#gen-greenRingGrad)" stroke="#ffffff" strokeWidth="5.5" />
+          <circle cx="250" cy="250" r="236" fill="none" stroke="#d4af37" strokeWidth="1.8" opacity="0.85" />
+          <circle cx="250" cy="250" r="232" fill="none" stroke="#ffffff" strokeWidth="1.2" opacity="0.9" />
+
+          {/* Inner White Field */}
+          <circle cx="250" cy="250" r="158" fill="#ffffff" stroke="#ffffff" strokeWidth="6" />
+          <circle cx="250" cy="250" r="155" fill="none" stroke="#0a522b" strokeWidth="2.2" />
+          <circle cx="250" cy="250" r="151" fill="none" stroke="#d4af37" strokeWidth="1" opacity="0.75" />
+
+          {/* Korean Top Arc Text */}
+          <text
+            fill="#ffffff"
+            fontFamily="'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"
+            fontSize="43"
+            fontWeight="900"
+            letterSpacing="19"
+          >
+            <textPath href="#gen-gyechon-top-arc-hd" startOffset="50%" textAnchor="middle">
+              계 촌 중 학 교
+            </textPath>
+          </text>
+
+          {/* Left and Right Separator Dots */}
+          <g>
+            <circle cx="65" cy="250" r="11" fill="#f59e0b" />
+            <circle cx="65" cy="250" r="8" fill="#ffffff" />
+            <circle cx="435" cy="250" r="11" fill="#f59e0b" />
+            <circle cx="435" cy="250" r="8" fill="#ffffff" />
           </g>
-          <g fill="#21a344" stroke="#178033" strokeWidth="1.5">
-            <path d="M 295 345 C 310 340, 325 325, 330 310 C 322 316, 308 328, 295 345 Z" />
-            <path d="M 320 330 C 340 322, 350 305, 358 290 C 348 297, 332 310, 320 330 Z" />
-            <path d="M 340 305 C 360 295, 370 275, 374 255 C 363 265, 350 285, 340 305 Z" />
-            <path d="M 352 275 C 370 260, 378 240, 378 220 C 368 232, 356 252, 352 275 Z" />
-            <path d="M 355 240 C 370 220, 374 200, 370 180 C 361 196, 353 218, 355 240 Z" />
-            <path d="M 348 205 C 360 185, 358 165, 350 148 C 343 165, 340 185, 348 205 Z" />
-            <path d="M 332 175 C 340 155, 332 138, 320 125 C 318 142, 320 160, 332 175 Z" />
-            <path d="M 310 152 C 315 135, 302 120, 288 110 C 290 128, 298 142, 310 152 Z" />
-            <path d="M 312 300 C 324 290, 328 278, 325 266 C 318 276, 312 288, 312 300 Z" fill="#2eb853" />
-            <path d="M 328 260 C 338 250, 340 236, 335 224 C 329 234, 324 248, 328 260 Z" fill="#2eb853" />
-            <path d="M 330 220 C 336 206, 332 194, 324 184 C 320 196, 322 209, 330 220 Z" fill="#2eb853" />
-            <path d="M 318 185 C 320 170, 312 160, 302 152 C 302 165, 308 176, 318 185 Z" fill="#2eb853" />
+
+          {/* English Bottom Arc Text */}
+          <text
+            fill="#ffffff"
+            fontFamily="'Montserrat', 'Arial', 'Helvetica', sans-serif"
+            fontSize="31"
+            fontWeight="800"
+            letterSpacing="3.5"
+          >
+            <textPath href="#gen-gyechon-bottom-arc-hd" startOffset="50%" textAnchor="middle">
+              GYECHON MIDDLE SCHOOL
+            </textPath>
+          </text>
+
+          {/* Laurel Wreath */}
+          <g strokeLinecap="round" strokeLinejoin="round">
+            {/* Left Branch */}
+            <g>
+              <path d="M 235 348 C 170 338, 128 275, 142 185 C 148 145, 175 118, 208 106" fill="none" stroke="#0d6837" strokeWidth="3" />
+              <path d="M 215 348 C 190 346, 172 332, 168 316 C 180 322, 198 334, 215 348 Z" fill="#15803d" stroke="#166534" strokeWidth="1.2" />
+              <path d="M 195 336 C 172 328, 158 312, 150 295 C 162 302, 180 318, 195 336 Z" fill="#16a34a" stroke="#15803d" strokeWidth="1.2" />
+              <path d="M 178 308 C 160 296, 152 280, 154 265 C 164 274, 174 290, 178 308 Z" fill="#22c55e" opacity="0.9" />
+              <path d="M 172 310 C 150 298, 138 278, 134 256 C 146 266, 162 288, 172 310 Z" fill="#15803d" stroke="#166534" strokeWidth="1.2" />
+              <path d="M 156 278 C 136 262, 126 240, 128 218 C 140 230, 152 254, 156 278 Z" fill="#16a34a" stroke="#15803d" strokeWidth="1.2" />
+              <path d="M 148 248 C 136 235, 134 218, 140 204 C 148 216, 152 232, 148 248 Z" fill="#22c55e" opacity="0.9" />
+              <path d="M 152 242 C 135 220, 130 196, 136 174 C 146 190, 155 215, 152 242 Z" fill="#15803d" stroke="#166534" strokeWidth="1.2" />
+              <path d="M 158 206 C 144 184, 146 160, 156 142 C 164 160, 168 184, 158 206 Z" fill="#16a34a" stroke="#15803d" strokeWidth="1.2" />
+              <path d="M 166 178 C 158 162, 164 146, 174 135 C 178 150, 176 166, 166 178 Z" fill="#22c55e" opacity="0.9" />
+              <path d="M 176 172 C 168 150, 176 132, 190 118 C 192 136, 190 156, 176 172 Z" fill="#15803d" stroke="#166534" strokeWidth="1.2" />
+              <path d="M 196 148 C 190 130, 204 114, 218 104 C 216 122, 208 138, 196 148 Z" fill="#16a34a" stroke="#15803d" strokeWidth="1.2" />
+              <path d="M 210 125 C 208 112, 218 102, 228 95 C 226 108, 220 118, 210 125 Z" fill="#4ade80" />
+            </g>
+            {/* Right Branch */}
+            <g>
+              <path d="M 265 348 C 330 338, 372 275, 358 185 C 352 145, 325 118, 292 106" fill="none" stroke="#0d6837" strokeWidth="3" />
+              <path d="M 285 348 C 310 346, 328 332, 332 316 C 320 322, 302 334, 285 348 Z" fill="#15803d" stroke="#166534" strokeWidth="1.2" />
+              <path d="M 305 336 C 328 328, 342 312, 350 295 C 338 302, 320 318, 305 336 Z" fill="#16a34a" stroke="#15803d" strokeWidth="1.2" />
+              <path d="M 322 308 C 340 296, 348 280, 346 265 C 336 274, 326 290, 322 308 Z" fill="#22c55e" opacity="0.9" />
+              <path d="M 328 310 C 350 298, 362 278, 366 256 C 354 266, 338 288, 328 310 Z" fill="#15803d" stroke="#166534" strokeWidth="1.2" />
+              <path d="M 344 278 C 364 262, 374 240, 372 218 C 360 230, 348 254, 344 278 Z" fill="#16a34a" stroke="#15803d" strokeWidth="1.2" />
+              <path d="M 352 248 C 364 235, 366 218, 360 204 C 352 216, 348 232, 352 248 Z" fill="#22c55e" opacity="0.9" />
+              <path d="M 348 242 C 365 220, 370 196, 364 174 C 354 190, 345 215, 348 242 Z" fill="#15803d" stroke="#166534" strokeWidth="1.2" />
+              <path d="M 342 206 C 356 184, 354 160, 344 142 C 336 160, 332 184, 342 206 Z" fill="#16a34a" stroke="#15803d" strokeWidth="1.2" />
+              <path d="M 334 178 C 342 162, 336 146, 326 135 C 322 150, 324 166, 334 178 Z" fill="#22c55e" opacity="0.9" />
+              <path d="M 324 172 C 332 150, 324 132, 310 118 C 308 136, 310 156, 324 172 Z" fill="#15803d" stroke="#166534" strokeWidth="1.2" />
+              <path d="M 304 148 C 310 130, 296 114, 282 104 C 284 122, 292 138, 304 148 Z" fill="#16a34a" stroke="#15803d" strokeWidth="1.2" />
+              <path d="M 290 125 C 292 112, 282 102, 272 95 C 274 108, 280 118, 290 125 Z" fill="#4ade80" />
+            </g>
           </g>
-        </g>
-        <g id="gen-center-seal">
-          <rect x="195" y="150" width="110" height="150" rx="4" fill="#ffffff" stroke="#f5a623" strokeWidth="11" />
-          <g fill="#f5a623">
-            <path d="M 214 172 H 286 C 289 172, 291 174, 291 177 V 212 C 291 215, 289 217, 286 217 H 269 V 193 H 214 Z" rx="2" />
-            <rect x="228" y="210" width="44" height="12" rx="3" />
-            <rect x="228" y="228" width="44" height="12" rx="3" />
-            <path d="M 226 262 C 226 248, 274 248, 274 262 C 274 276, 226 276, 226 262 Z" fill="none" stroke="#f5a623" strokeWidth="12" />
+
+          {/* Center Golden Seal */}
+          <g id="gen-center-seal-hd">
+            <rect x="192" y="144" width="116" height="158" rx="6" fill="#ffffff" stroke="url(#gen-goldEmblemGradHD)" strokeWidth="10" />
+            <rect x="200" y="152" width="100" height="142" rx="3" fill="none" stroke="#d97706" strokeWidth="1.5" opacity="0.8" />
+            <g fill="url(#gen-goldEmblemGradHD)">
+              <path d="M 215 168 H 283 C 286 168, 288 170, 288 173 V 212 C 288 215, 286 217, 283 217 H 268 C 266 217, 265 215, 265 213 V 189 H 215 C 213 189, 211 187, 211 185 V 172 C 211 170, 213 168, 215 168 Z" />
+              <rect x="227" y="206" width="46" height="13" rx="3.5" />
+              <rect x="227" y="226" width="46" height="13" rx="3.5" />
+              <path d="M 250 248 C 235 248, 222 258, 222 272 C 222 286, 235 296, 250 296 C 265 296, 278 286, 278 272 C 278 258, 265 248, 250 248 Z M 250 284 C 242 284, 234 278, 234 272 C 234 266, 242 260, 250 260 C 258 260, 266 266, 266 272 C 266 278, 258 284, 250 284 Z" />
+            </g>
           </g>
-        </g>
-        <g id="gen-ribbon-bow">
-          <path d="M 235 340 L 210 388 L 225 385 L 245 352 Z" fill="#f59e0b" />
-          <path d="M 235 340 L 205 385 L 222 368 L 242 345 Z" fill="#fbbd23" />
-          <path d="M 265 340 L 290 388 L 275 385 L 255 352 Z" fill="#f59e0b" />
-          <path d="M 265 340 L 295 385 L 278 368 L 258 345 Z" fill="#fbbd23" />
-          <path d="M 245 342 C 220 320, 202 335, 212 355 C 222 368, 240 350, 245 345 Z" fill="url(#gen-goldRibbonGrad)" stroke="#d97706" strokeWidth="1.5" />
-          <path d="M 255 342 C 280 320, 298 335, 288 355 C 278 368, 260 350, 255 345 Z" fill="url(#gen-goldRibbonGrad)" stroke="#d97706" strokeWidth="1.5" />
-          <ellipse cx="250" cy="344" rx="12" ry="10" fill="#f59e0b" stroke="#d97706" strokeWidth="1.5" />
-          <ellipse cx="248" cy="342" rx="6" ry="4" fill="#fde047" opacity="0.8" />
-        </g>
-      </svg>
-    );
+
+          {/* Golden Ribbon Bow */}
+          <g id="gen-ribbon-bow-hd">
+            <path d="M 235 342 L 198 392 L 218 386 L 228 396 L 244 350 Z" fill="#d97706" />
+            <path d="M 235 342 L 202 388 L 216 376 L 242 346 Z" fill="url(#gen-goldRibbonGradHD)" />
+            <path d="M 265 342 L 302 392 L 282 386 L 272 396 L 256 350 Z" fill="#d97706" />
+            <path d="M 265 342 L 298 388 L 284 376 L 258 346 Z" fill="url(#gen-goldRibbonGradHD)" />
+            <path d="M 246 343 C 218 318, 196 335, 206 358 C 216 374, 238 356, 246 348 Z" fill="url(#gen-goldRibbonGradHD)" stroke="#b45309" strokeWidth="1.5" />
+            <path d="M 254 343 C 282 318, 304 335, 294 358 C 284 374, 262 356, 254 348 Z" fill="url(#gen-goldRibbonGradHD)" stroke="#b45309" strokeWidth="1.5" />
+            <ellipse cx="250" cy="345" rx="14" ry="11" fill="url(#gen-goldRibbonGradHD)" stroke="#b45309" strokeWidth="1.6" />
+            <ellipse cx="248" cy="343" rx="7" ry="4" fill="#ffffff" opacity="0.6" />
+          </g>
+        </svg>
+      );
+    };
 
     // Academic Year Helper
     // 현재 날짜의 월이 2월 이하이면 이전 학년도, 3월 이상이면 현재 학년도로 자동 계산
@@ -2955,9 +3122,24 @@
       );
     }
 
-    // Mount to DOM
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    // Mount to DOM safely
+    try {
+      const rootEl = document.getElementById('root');
+      if (rootEl) {
+        const root = ReactDOM.createRoot(rootEl);
+        root.render(
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        );
+      }
+    } catch (e) {
+      console.error('Mount error:', e);
+      var target = document.getElementById('root') || document.body;
+      if (target) {
+        target.innerHTML = '<div style="padding: 24px; text-align: center; color: #dc2626;">마운트 오류가 발생했습니다: ' + (e.message || e) + '</div>';
+      }
+    }
   </script>
 </body>
 </html>
