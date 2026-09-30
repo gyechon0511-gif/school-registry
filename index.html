@@ -1934,53 +1934,31 @@
                     <span>연수 대장 Excel 다운로드</span>
                   </button>
 
-                  <div className="flex flex-wrap sm:flex-nowrap gap-2">
-                    {onOpenLogoModal && (
-                      <button
-                        type="button"
-                        onClick={onOpenLogoModal}
-                        className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm border border-white/20 backdrop-blur-xs shadow-sm active:scale-95 transition-all"
-                        title="계촌중학교 교표(원형 마크) 설정 및 고화질 이미지 등록"
-                      >
-                        <ImageIcon className="w-4 h-4 text-emerald-300" />
-                        <span>교표(마크) 설정</span>
-                      </button>
-                    )}
+                  <button
+                    onClick={() => {
+                      setNewAcademicYear(getCurrentAcademicYear());
+                      setNewDate(getKoreanTodayDateString());
+                      setIsModalOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs sm:text-sm shadow-lg hover:shadow-indigo-500/25 active:scale-95 transition-all"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    <span>신규 연수등록부 개설</span>
+                  </button>
+                </div>
 
-                    <button
-                      onClick={() => {
-                        setNewAcademicYear(getCurrentAcademicYear());
-                        setNewDate(getKoreanTodayDateString());
-                        setIsModalOpen(true);
-                      }}
-                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs sm:text-sm shadow-lg hover:shadow-indigo-500/25 active:scale-95 transition-all"
-                    >
-                      <PlusIcon className="w-4 h-4" />
-                      <span>신규 연수등록부 개설</span>
-                    </button>
+                {/* School Emblem on Right side of Blue Banner (Hover shows 마크 변경, Click opens modal) */}
+                <button
+                  type="button"
+                  onClick={onOpenLogoModal}
+                  className="group relative flex items-center justify-center p-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg hover:bg-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer ring-2 ring-transparent hover:ring-amber-300/50 shrink-0"
+                  title="계촌중학교 교표(원형 마크) 설정 및 고화질 이미지 등록 (클릭하여 변경)"
+                >
+                  <GyechonSchoolLogo className="w-20 h-20 sm:w-24 sm:h-24 md:w-26 md:h-26 drop-shadow-md" />
+                  <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[11px] font-bold transition-opacity">
+                    마크 변경
                   </div>
-                </div>
-
-                <div className="flex flex-col items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={onOpenLogoModal}
-                    className="group relative flex items-center justify-center p-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg hover:bg-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer ring-2 ring-transparent hover:ring-amber-300/50"
-                    title="계촌중학교 교표(원형 마크) 설정 및 고화질 이미지 등록 (클릭하여 변경)"
-                  >
-                    <GyechonSchoolLogo className="w-20 h-20 sm:w-24 sm:h-24 md:w-26 md:h-26 drop-shadow-md" />
-                    <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[11px] font-bold transition-opacity">
-                      마크 변경
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onOpenLogoModal}
-                    className="text-[10px] text-indigo-200 hover:text-white underline underline-offset-2 transition-colors cursor-pointer"
-                  >
-                    교표 마크 설정
-                  </button>
-                </div>
+                </button>
               </div>
             </div>
 
