@@ -19,6 +19,32 @@
   <!-- SheetJS (XLSX) CDN for Excel Export -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
+  <!-- Firebase App & Firestore CDN (v10 Modular for Real-Time Cross-Device Cloud Sync) -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      projectId: "the-boulevard-02ts5",
+      appId: "1:564616643240:web:3bc540246dccf8b3e7f89d",
+      apiKey: "AIzaSyB2nEm4MxeDAEIYiB6IERzqop5fwTjd9PQ",
+      authDomain: "the-boulevard-02ts5.firebaseapp.com",
+      firestoreDatabaseId: "ai-studio-0df35608-8454-4ce3-9b10-5d3448a5741a",
+      storageBucket: "the-boulevard-02ts5.firebasestorage.app",
+      messagingSenderId: "564616643240"
+    };
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+      window.__FIREBASE_DB__ = db;
+      window.__FIREBASE_OPS__ = { collection, doc, onSnapshot, setDoc, deleteDoc, getDocs };
+      window.dispatchEvent(new CustomEvent('firebase-ready'));
+    } catch (e) {
+      console.warn('Firebase init warning:', e);
+    }
+  </script>
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
     body {
@@ -158,6 +184,9 @@
     const Edit3Icon = ({ className }) => (
       <Icon className={className} path={<path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />} />
     );
+    const PencilIcon = ({ className }) => (
+      <Icon className={className} path={<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z M15 5l4 4" />} />
+    );
     const CopyIcon = ({ className }) => (
       <Icon className={className} path={<path d="M20 9h-9a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2zM5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />} />
     );
@@ -260,7 +289,7 @@
           [`학교명: ${training.school}`, `일시: ${training.date} ${training.time || ''}`, `장소: ${training.location}`],
           [`주관/강사: ${training.instructor || training.school}`, `연수대상: ${training.target || '전 교직원'}`, `참석 현황: 총 ${signedCount}명 서명 / 전체 ${totalStaffCount}명 (${progressPercent}%)`],
           [],
-          ['연번', '소속', '직위', '성명', '서명 여부', '서명 일시', '비고']
+          ['연번', '소속', '직위', '성명', '서명 여부', '비고']
         ];
 
         list.forEach((staff, index) => {
@@ -270,7 +299,6 @@
             staff.position,
             staff.name,
             staff.signature ? '서명완료' : '미서명',
-            staff.signedAt || '-',
             staff.note || ''
           ]);
         });
@@ -281,8 +309,8 @@
 
         const ws = XLSX.utils.aoa_to_sheet(data);
         ws['!cols'] = [
-          { wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 14 },
-          { wch: 14 }, { wch: 22 }, { wch: 20 }
+          { wch: 8 }, { wch: 18 }, { wch: 18 }, { wch: 16 },
+          { wch: 16 }, { wch: 24 }
         ];
         return ws;
       };
@@ -843,7 +871,7 @@
     // ==========================================
     // Component 2: Admin Official Register View
     // ==========================================
-    function AdminTableView({ training, allTrainings = [], onBackToDashboard, onResetSignatures }) {
+    function AdminTableView({ training, allTrainings = [], onBackToDashboard, onResetSignatures, onEditTraining }) {
       const staffList = training.staffList || [];
       const signedStaffList = staffList.filter(s => !!s.signature);
       const signedCount = signedStaffList.length;
@@ -1000,6 +1028,17 @@
                   )}
                 </div>
 
+                {onEditTraining && (
+                  <button
+                    onClick={() => onEditTraining(training)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors"
+                    title="연수 개요 및 정보 수정"
+                  >
+                    <PencilIcon className="w-3.5 h-3.5 text-amber-600" />
+                    <span>연수 정보 수정</span>
+                  </button>
+                )}
+
                 <button
                   onClick={() => {
                     if (window.confirm(`"${training.title}"의 모든 서명 데이터를 초기화하시겠습니까?`)) {
@@ -1061,18 +1100,17 @@
                 <thead>
                   <tr className="bg-slate-100 text-slate-900 border-b border-slate-900 font-bold">
                     <th className="border border-slate-900 py-2.5 px-2 w-12">연번</th>
-                    <th className="border border-slate-900 py-2.5 px-3 w-28">소속</th>
-                    <th className="border border-slate-900 py-2.5 px-3 w-28">직위</th>
-                    <th className="border border-slate-900 py-2.5 px-3 w-28">성명</th>
-                    <th className="border border-slate-900 py-2.5 px-3 w-40">서명</th>
-                    <th className="border border-slate-900 py-2.5 px-3 w-36">서명일시</th>
-                    <th className="border border-slate-900 py-2.5 px-2 w-20">비고</th>
+                    <th className="border border-slate-900 py-2.5 px-3 w-32">소속</th>
+                    <th className="border border-slate-900 py-2.5 px-3 w-32">직위</th>
+                    <th className="border border-slate-900 py-2.5 px-3 w-32">성명</th>
+                    <th className="border border-slate-900 py-2.5 px-3 w-48">서명</th>
+                    <th className="border border-slate-900 py-2.5 px-2 w-28">비고</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayList.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="border border-slate-900 py-8 text-slate-400 text-xs">
+                      <td colSpan={6} className="border border-slate-900 py-8 text-slate-400 text-xs">
                         서명 완료된 교직원이 아직 없습니다. 모바일 QR코드를 스캔하여 서명을 진행해 주세요.
                       </td>
                     </tr>
@@ -1104,9 +1142,6 @@
                             <span className="text-slate-300 font-light text-xs print:hidden">(미서명)</span>
                           )}
                         </td>
-                        <td className="border border-slate-900 py-2 px-2 text-[11px] text-slate-600 font-mono">
-                          {staff.signedAt || '-'}
-                        </td>
                         <td className="border border-slate-900 py-2 px-2 text-xs text-slate-500">
                           {staff.note || ''}
                         </td>
@@ -1133,7 +1168,7 @@
     // ==========================================
     // Component 3: Training Dashboard View
     // ==========================================
-    function TrainingDashboard({ trainings, onSelectTraining, onCreateTraining, onDeleteTraining, onOpenQrModal }) {
+    function TrainingDashboard({ trainings, onSelectTraining, onCreateTraining, onEditTraining, onDeleteTraining, onOpenQrModal }) {
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [newTitle, setNewTitle] = useState('');
       const [newDate, setNewDate] = useState('2026. 9. 29.(화)');
@@ -1295,6 +1330,13 @@
                             title="모바일 접속 QR 코드"
                           >
                             <QrCodeIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onEditTraining(t)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                            title="연수 정보 수정"
+                          >
+                            <PencilIcon className="w-4 h-4" />
                           </button>
                           {trainings.length > 1 && (
                             <button
@@ -1482,6 +1524,219 @@
     }
 
     // ==========================================
+    // Component: Edit Training Modal
+    // ==========================================
+    function EditTrainingModal({ isOpen, training, onClose, onSave }) {
+      const [title, setTitle] = useState('');
+      const [date, setDate] = useState('');
+      const [time, setTime] = useState('');
+      const [location, setLocation] = useState('');
+      const [instructor, setInstructor] = useState('');
+      const [target, setTarget] = useState('');
+      const [school, setSchool] = useState('');
+      const [status, setStatus] = useState('active');
+
+      useEffect(() => {
+        if (training) {
+          setTitle(training.title || '');
+          setDate(training.date || '');
+          setTime(training.time || '');
+          setLocation(training.location || '');
+          setInstructor(training.instructor || '');
+          setTarget(training.target || '전 교직원');
+          setSchool(training.school || '계촌중학교');
+          setStatus(training.status || 'active');
+        }
+      }, [training]);
+
+      if (!isOpen || !training) return null;
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!title.trim()) {
+          alert('연수 제목을 입력해주세요.');
+          return;
+        }
+        if (!date.trim()) {
+          alert('연수 일자를 입력해주세요.');
+          return;
+        }
+        onSave(training.id, {
+          title: title.trim(),
+          date: date.trim(),
+          time: time.trim(),
+          location: location.trim() || '2층 도서관',
+          instructor: instructor.trim(),
+          target: target.trim() || '전 교직원',
+          school: school.trim() || '계촌중학교',
+          status
+        });
+        onClose();
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                  <PencilIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">연수등록부 정보 수정</h3>
+                  <p className="text-[11px] text-slate-500">개설된 연수의 제목, 일시, 장소, 강사 등을 수정합니다.</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  연수 제목 <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="예: 2026학년도 교직원 심폐소생술(CPR) 및 응급처치 실습교육"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    일시 <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    placeholder="예: 2026. 9. 29.(화)"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">시간</label>
+                  <input
+                    type="text"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    placeholder="예: 15:30 ~ 16:30"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">장소</label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="예: 2층 도서관, 강당"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">강사 / 주관부서</label>
+                  <input
+                    type="text"
+                    value={instructor}
+                    onChange={(e) => setInstructor(e.target.value)}
+                    placeholder="예: 교무기획부, 외부 전문강사"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">연수 대상</label>
+                  <input
+                    type="text"
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                    placeholder="예: 전 교직원"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">주관 학교명</label>
+                  <input
+                    type="text"
+                    value={school}
+                    onChange={(e) => setSchool(e.target.value)}
+                    placeholder="예: 계촌중학교"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">연수 진행 상태</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStatus('active')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+                      status === 'active'
+                        ? 'bg-indigo-50 border-indigo-400 text-indigo-700 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    진행중 (서명 가능)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatus('closed')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+                      status === 'closed'
+                        ? 'bg-slate-800 border-slate-900 text-white shadow-xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    마감 / 연수 완료
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-[11px] text-amber-900">
+                ℹ️ 이미 제출된 교직원 서명과 등록 명부는 그대로 유지되며, 연수 개요 정보만 즉시 수정 및 실시간 동기화됩니다.
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2.5 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-semibold"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-white bg-amber-600 hover:bg-amber-700 font-bold shadow-sm"
+                >
+                  <CheckIcon className="w-4 h-4" />
+                  <span>수정사항 저장</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
     // Component 4: QR Share Modal
     // ==========================================
     function QrShareModal({ isOpen, onClose, training, onNavigateToSign }) {
@@ -1627,6 +1882,8 @@
         return trainings[0]?.id || INITIAL_TRAININGS[0].id;
       });
       const [qrModalTrainingId, setQrModalTrainingId] = useState(null);
+      const [editingTraining, setEditingTraining] = useState(null);
+      const [isCloudConnected, setIsCloudConnected] = useState(false);
 
       useEffect(() => {
         try {
@@ -1635,6 +1892,59 @@
           console.warn('LocalStorage save error', e);
         }
       }, [trainings]);
+
+      // Firebase Firestore Real-Time Cross-Device Synchronization
+      useEffect(() => {
+        const startSync = () => {
+          if (!window.__FIREBASE_DB__ || !window.__FIREBASE_OPS__) return;
+          const { collection, doc, onSnapshot, setDoc } = window.__FIREBASE_OPS__;
+          const db = window.__FIREBASE_DB__;
+
+          try {
+            const trainingsCol = collection(db, 'trainings');
+            return onSnapshot(trainingsCol, async (snapshot) => {
+              setIsCloudConnected(true);
+              if (snapshot.empty) {
+                try {
+                  for (const item of INITIAL_TRAININGS) {
+                    await setDoc(doc(db, 'trainings', item.id), item);
+                  }
+                } catch (e) {
+                  console.warn('Seed error', e);
+                }
+                return;
+              }
+
+              const cloudList = [];
+              snapshot.forEach((snapDoc) => {
+                cloudList.push(snapDoc.data());
+              });
+              cloudList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+              setTrainings(cloudList);
+            }, (err) => {
+              console.warn('Firestore snapshot error', err);
+              setIsCloudConnected(false);
+            });
+          } catch (e) {
+            console.warn('Firestore setup error', e);
+          }
+        };
+
+        if (window.__FIREBASE_DB__) {
+          const unsub = startSync();
+          return () => unsub && unsub();
+        } else {
+          let unsub = null;
+          const handler = () => {
+            unsub = startSync();
+          };
+          window.addEventListener('firebase-ready', handler, { once: true });
+          return () => {
+            window.removeEventListener('firebase-ready', handler);
+            if (unsub) unsub();
+          };
+        }
+      }, []);
 
       // URL history change listener
       useEffect(() => {
@@ -1690,7 +2000,7 @@
         window.history.pushState(null, '', cleanPath);
       };
 
-      const handleCreateTraining = (data) => {
+      const handleCreateTraining = async (data) => {
         const newTraining = {
           id: `training-${Date.now()}`,
           title: data.title,
@@ -1705,74 +2015,139 @@
           staffList: BASE_STAFF_ROSTER.map(s => ({ ...s }))
         };
 
-        setTrainings(prev => [newTraining, ...prev]);
+        setTrainings(prev => [newTraining, ...prev.filter(t => t.id !== newTraining.id)]);
         setActiveTrainingId(newTraining.id);
         setCurrentView('dashboard');
+
+        if (window.__FIREBASE_DB__ && window.__FIREBASE_OPS__) {
+          try {
+            const { doc, setDoc } = window.__FIREBASE_OPS__;
+            await setDoc(doc(window.__FIREBASE_DB__, 'trainings', newTraining.id), newTraining);
+          } catch (e) {
+            console.warn('Firebase create error', e);
+          }
+        }
       };
 
-      const handleDeleteTraining = (id) => {
+      const handleDeleteTraining = async (id) => {
         setTrainings(prev => prev.filter(t => t.id !== id));
         if (activeTrainingId === id) {
           const remaining = trainings.filter(t => t.id !== id);
           if (remaining.length > 0) setActiveTrainingId(remaining[0].id);
         }
+
+        if (window.__FIREBASE_DB__ && window.__FIREBASE_OPS__) {
+          try {
+            const { doc, deleteDoc } = window.__FIREBASE_OPS__;
+            await deleteDoc(doc(window.__FIREBASE_DB__, 'trainings', id));
+          } catch (e) {
+            console.warn('Firebase delete error', e);
+          }
+        }
       };
 
-      const handleSaveSignature = (trainingId, staffId, signatureDataUrl) => {
+      const handleUpdateTraining = async (id, updatedData) => {
+        const target = trainings.find(t => t.id === id);
+        if (!target) return;
+        const updatedSession = { ...target, ...updatedData };
+        setTrainings(prev => prev.map(t => (t.id === id ? updatedSession : t)));
+        if (window.__FIREBASE_DB__ && window.__FIREBASE_OPS__) {
+          try {
+            const { doc, setDoc } = window.__FIREBASE_OPS__;
+            await setDoc(doc(window.__FIREBASE_DB__, 'trainings', id), updatedSession);
+          } catch (e) {
+            console.warn('Firebase update error', e);
+          }
+        }
+      };
+
+      const handleSaveSignature = async (trainingId, staffId, signatureDataUrl) => {
         const now = new Date();
         const formattedDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-        setTrainings(prev =>
-          prev.map(t =>
-            t.id === trainingId
-              ? {
-                  ...t,
-                  staffList: t.staffList.map(s =>
-                    s.id === staffId
-                      ? { ...s, signature: signatureDataUrl, signedAt: formattedDate }
-                      : s
-                  )
-                }
-              : t
+        const target = trainings.find(t => t.id === trainingId) || activeTraining;
+        if (!target) return;
+
+        const updatedSession = {
+          ...target,
+          staffList: target.staffList.map(s =>
+            s.id === staffId
+              ? { ...s, signature: signatureDataUrl, signedAt: formattedDate }
+              : s
           )
+        };
+
+        setTrainings(prev =>
+          prev.map(t => (t.id === trainingId ? updatedSession : t))
         );
+
+        if (window.__FIREBASE_DB__ && window.__FIREBASE_OPS__) {
+          try {
+            const { doc, setDoc } = window.__FIREBASE_OPS__;
+            await setDoc(doc(window.__FIREBASE_DB__, 'trainings', trainingId), updatedSession);
+          } catch (e) {
+            console.warn('Firebase sign error', e);
+          }
+        }
       };
 
-      const handleAddNewStaffAndSign = (trainingId, newStaff, signatureDataUrl) => {
+      const handleAddNewStaffAndSign = async (trainingId, newStaff, signatureDataUrl) => {
         const now = new Date();
         const formattedDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+        const target = trainings.find(t => t.id === trainingId) || activeTraining;
+        if (!target) return;
+
+        const nextId = target.staffList.length > 0 ? Math.max(...target.staffList.map(m => m.id)) + 1 : 1;
+        const createdMember = {
+          id: nextId,
+          name: newStaff.name,
+          department: newStaff.department || '교직원',
+          position: newStaff.position || '교직원',
+          signature: signatureDataUrl,
+          signedAt: formattedDate
+        };
+
+        const updatedSession = {
+          ...target,
+          staffList: [...target.staffList, createdMember]
+        };
+
         setTrainings(prev =>
-          prev.map(t => {
-            if (t.id !== trainingId) return t;
-            const nextId = t.staffList.length > 0 ? Math.max(...t.staffList.map(m => m.id)) + 1 : 1;
-            const createdMember = {
-              id: nextId,
-              name: newStaff.name,
-              department: newStaff.department || '교직원',
-              position: newStaff.position || '교직원',
-              signature: signatureDataUrl,
-              signedAt: formattedDate
-            };
-            return {
-              ...t,
-              staffList: [...t.staffList, createdMember]
-            };
-          })
+          prev.map(t => (t.id === trainingId ? updatedSession : t))
         );
+
+        if (window.__FIREBASE_DB__ && window.__FIREBASE_OPS__) {
+          try {
+            const { doc, setDoc } = window.__FIREBASE_OPS__;
+            await setDoc(doc(window.__FIREBASE_DB__, 'trainings', trainingId), updatedSession);
+          } catch (e) {
+            console.warn('Firebase add staff error', e);
+          }
+        }
       };
 
-      const handleResetSignatures = (trainingId) => {
+      const handleResetSignatures = async (trainingId) => {
+        const target = trainings.find(t => t.id === trainingId) || activeTraining;
+        if (!target) return;
+
+        const resetSession = {
+          ...target,
+          staffList: BASE_STAFF_ROSTER.map(s => ({ ...s }))
+        };
+
         setTrainings(prev =>
-          prev.map(t =>
-            t.id === trainingId
-              ? {
-                  ...t,
-                  staffList: BASE_STAFF_ROSTER.map(s => ({ ...s }))
-                }
-              : t
-          )
+          prev.map(t => (t.id === trainingId ? resetSession : t))
         );
+
+        if (window.__FIREBASE_DB__ && window.__FIREBASE_OPS__) {
+          try {
+            const { doc, setDoc } = window.__FIREBASE_OPS__;
+            await setDoc(doc(window.__FIREBASE_DB__, 'trainings', trainingId), resetSession);
+          } catch (e) {
+            console.warn('Firebase reset error', e);
+          }
+        }
       };
 
       const qrModalTraining = trainings.find(t => t.id === qrModalTrainingId) || null;
@@ -1838,6 +2213,18 @@
               </div>
 
               <div className="flex items-center gap-2">
+                {/* Real-time Cloud Sync Badge in single-file HTML */}
+                <div 
+                  className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                    isCloudConnected 
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                      : 'bg-slate-100 text-slate-600 border-slate-200'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                  <span>{isCloudConnected ? '클라우드 실시간 동기화' : '로컬 모드'}</span>
+                </div>
+
                 {currentView !== 'dashboard' && activeTraining ? (
                   <button
                     onClick={() => setQrModalTrainingId(activeTraining.id)}
@@ -1862,6 +2249,7 @@
                 trainings={trainings}
                 onSelectTraining={handleSelectTraining}
                 onCreateTraining={handleCreateTraining}
+                onEditTraining={t => setEditingTraining(t)}
                 onDeleteTraining={handleDeleteTraining}
                 onOpenQrModal={(id) => setQrModalTrainingId(id)}
               />
@@ -1882,6 +2270,7 @@
                 allTrainings={trainings}
                 onBackToDashboard={handleBackToDashboard}
                 onResetSignatures={handleResetSignatures}
+                onEditTraining={t => setEditingTraining(t)}
               />
             )}
           </main>
@@ -1889,6 +2278,13 @@
           <footer className="print:hidden py-5 border-t border-slate-200 text-center text-xs text-slate-400 bg-white">
             계촌중학교 · 교직원 연수등록부 통합 전자 관리 포털 시스템
           </footer>
+
+          <EditTrainingModal
+            isOpen={!!editingTraining}
+            training={editingTraining}
+            onClose={() => setEditingTraining(null)}
+            onSave={handleUpdateTraining}
+          />
 
           <QrShareModal
             isOpen={!!qrModalTrainingId}
