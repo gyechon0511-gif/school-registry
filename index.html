@@ -538,6 +538,53 @@
       );
     };
 
+    // Helper to compress uploaded school logo to max 320px for single-file HTML
+    function compressLogoImage(dataUrl, maxDim, callback) {
+      if (!dataUrl || dataUrl.startsWith('data:image/svg')) {
+        return callback(dataUrl);
+      }
+      try {
+        var img = new Image();
+        img.onload = function() {
+          var w = img.width;
+          var h = img.height;
+          if (w > h) {
+            if (w > maxDim) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            }
+          } else {
+            if (h > maxDim) {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          w = Math.max(1, w);
+          h = Math.max(1, h);
+          var canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          var ctx = canvas.getContext('2d');
+          if (!ctx) return callback(dataUrl);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, w, h);
+          try {
+            var png = canvas.toDataURL('image/png');
+            if (png.length < 150000) return callback(png);
+            var jpeg = canvas.toDataURL('image/jpeg', 0.88);
+            return callback(jpeg);
+          } catch (e) {
+            callback(dataUrl);
+          }
+        };
+        img.onerror = function() { callback(dataUrl); };
+        img.src = dataUrl;
+      } catch (err) {
+        callback(dataUrl);
+      }
+    }
+
     // School Logo Modal Component for Single-File HTML
     const SchoolLogoModal = ({ isOpen, onClose }) => {
       const [previewUrl, setPreviewUrl] = useState(() => {
@@ -563,33 +610,37 @@
 
         const reader = new FileReader();
         reader.onload = (event) => {
-          const result = event.target?.result;
-          if (result) {
-            try {
-              localStorage.setItem('gyechon_school_custom_logo_v1', result);
-              setPreviewUrl(result);
-              setIsSaved(true);
-              window.dispatchEvent(new Event('gyechon-logo-updated'));
-              setTimeout(() => setIsSaved(false), 2500);
+          const rawResult = event.target?.result;
+          if (rawResult) {
+            compressLogoImage(rawResult, 320, function(result) {
+              try {
+                localStorage.setItem('gyechon_school_custom_logo_v1', result);
+                setPreviewUrl(result);
+                setIsSaved(true);
+                window.dispatchEvent(new Event('gyechon-logo-updated'));
+                setTimeout(() => setIsSaved(false), 2500);
 
-              // 1. Sync to server API if available
-              fetch('/api/school-logo', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ customLogo: result })
-              }).catch(() => {});
+                // 1. Sync to server API if available
+                fetch('/api/school-logo', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ customLogo: result })
+                }).catch(() => {});
 
-              // 2. Sync to Firestore Cloud DB
-              if (window.__FIREBASE_DB__ && window.__FIREBASE_OPS__) {
-                try {
-                  const { doc, setDoc } = window.__FIREBASE_OPS__;
-                  const logoRef = doc(window.__FIREBASE_DB__, 'settings', 'schoolLogo');
-                  setDoc(logoRef, { customLogo: result, updatedAt: Date.now() }, { merge: true });
-                } catch (e) {}
+                // 2. Sync to Firestore Cloud DB
+                if (window.__FIREBASE_DB__ && window.__FIREBASE_OPS__) {
+                  try {
+                    const { doc, setDoc } = window.__FIREBASE_OPS__;
+                    const logoRef = doc(window.__FIREBASE_DB__, 'settings', 'schoolLogo');
+                    setDoc(logoRef, { customLogo: result, updatedAt: Date.now() }, { merge: true });
+                  } catch (e) {
+                    console.warn('Firestore logo save error', e);
+                  }
+                }
+              } catch (err) {
+                alert('이미지 저장 공간이 부족합니다. 용량이 더 작은 이미지를 선택해주세요.');
               }
-            } catch (err) {
-              alert('이미지 저장 공간이 부족합니다. 용량이 더 작은 이미지를 선택해주세요.');
-            }
+            });
           }
         };
         reader.readAsDataURL(file);
@@ -1214,7 +1265,7 @@
     // ==========================================
     // Component 1: Mobile Signature Canvas View
     // ==========================================
-    function MobileSignView({ training, onBackToDashboard, onSaveSignature, onAddNewStaffAndSign }) {
+    function MobileSignView({ training, onBackToDashboard, onNavigateToStatutory, onSaveSignature, onAddNewStaffAndSign }) {
       const [signMode, setSignMode] = useState('existing');
       const [selectedStaffId, setSelectedStaffId] = useState('');
       const [customName, setCustomName] = useState('');
@@ -1369,24 +1420,51 @@
 
       return (
         <div className="max-w-lg mx-auto p-4 sm:p-6 pb-20 space-y-4">
-          <button
-            onClick={onBackToDashboard}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
-          >
-            <ArrowLeftIcon className="w-4 h-4" />
-            <span>전체 연수 목록으로 돌아가기</span>
-          </button>
+          <div className="flex items-center justify-between gap-2">
+            <button
+              onClick={onBackToDashboard}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 transition-colors bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-xs cursor-pointer"
+            >
+              <ArrowLeftIcon className="w-4 h-4" />
+              <span>전체 연수 목록</span>
+            </button>
 
-          {/* Training Info Card */}
+            <button
+              onClick={() => {
+                if (onNavigateToStatutory) {
+                  onNavigateToStatutory();
+                } else {
+                  window.location.hash = 'statutory';
+                  onBackToDashboard();
+                }
+              }}
+              className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-xl border border-emerald-200 shadow-xs transition-colors cursor-pointer"
+            >
+              <GraduationCapIcon className="w-4 h-4 text-emerald-600" />
+              <span>법정연수 대장 보기</span>
+            </button>
+          </div>
+
+          {/* Training Info Card with School Emblem */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">
-                <SchoolIcon className="w-3.5 h-3.5" />
-                {training.school}
-              </span>
-              <span className="text-xs font-medium text-slate-500">
-                서명 현황: <strong className="text-indigo-600">{signedCount}</strong> / {staffList.length}명
-              </span>
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-3">
+              <div className="flex items-center gap-2.5">
+                <GyechonSchoolLogo className="w-11 h-11 object-contain drop-shadow-xs shrink-0" />
+                <div>
+                  <div className="text-xs font-bold text-slate-900 leading-tight">
+                    {training.school}
+                  </div>
+                  <span className="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded font-semibold inline-block mt-0.5">
+                    교직원 연수 모바일 전자서명
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-medium">서명 현황</span>
+                <span className="text-xs font-bold text-indigo-700">
+                  {signedCount} <span className="text-slate-400 font-normal">/ {staffList.length}명</span>
+                </span>
+              </div>
             </div>
 
             <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-snug mb-3">
@@ -3076,9 +3154,16 @@
       statutoryTrainings = [],
       onAddStatutoryRecord,
       onUpdateStatutoryRecord,
-      onDeleteStatutoryRecord
+      onDeleteStatutoryRecord,
+      activeTab,
+      onTabChange
     }) {
-      const [activeDashboardTab, setActiveDashboardTab] = useState('sessions');
+      const [internalTab, setInternalTab] = useState('sessions');
+      const activeDashboardTab = activeTab !== undefined ? activeTab : internalTab;
+      const setActiveDashboardTab = (tab) => {
+        setInternalTab(tab);
+        if (onTabChange) onTabChange(tab);
+      };
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [selectedAcademicYear, setSelectedAcademicYear] = useState('all');
       const [viewMode, setViewMode] = useState('table');
@@ -4234,6 +4319,8 @@
               });
             }
             setCurrentView(info.targetView);
+          } else if (info.targetView === 'statutory') {
+            setCurrentView('statutory');
           } else if (info.targetView === 'dashboard') {
             setCurrentView('dashboard');
           }
@@ -4271,6 +4358,14 @@
           ? window.location.pathname
           : window.location.pathname + '/';
         window.history.pushState(null, '', cleanPath);
+      };
+
+      const handleNavigateToStatutory = () => {
+        setCurrentView('statutory');
+        const cleanPath = window.location.pathname.endsWith('/')
+          ? window.location.pathname
+          : window.location.pathname + '/';
+        window.history.pushState(null, '', cleanPath + '#statutory');
       };
 
       const handleCreateTraining = async (data) => {
@@ -4502,14 +4597,29 @@
                 <button
                   onClick={handleBackToDashboard}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                    currentView === 'dashboard' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    currentView === 'dashboard' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <LayersIcon className="w-3.5 h-3.5" />
-                  <span>전체 연수 목록</span>
+                  <SchoolIcon className="w-3.5 h-3.5" />
+                  <span>교내 연수등록부</span>
                 </button>
 
-                {currentView !== 'dashboard' && (
+                <button
+                  onClick={handleNavigateToStatutory}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    currentView === 'statutory' ? 'bg-emerald-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <GraduationCapIcon className="w-3.5 h-3.5" />
+                  <span>법정연수 대장</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    currentView === 'statutory' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {statutoryTrainings.length}
+                  </span>
+                </button>
+
+                {currentView !== 'dashboard' && currentView !== 'statutory' && (
                   <>
                     <button
                       onClick={() => setCurrentView('sign')}
@@ -4577,7 +4687,7 @@
 
           {/* Main Content */}
           <main className="flex-1 w-full">
-            {currentView === 'dashboard' && (
+            {(currentView === 'dashboard' || currentView === 'statutory') && (
               <TrainingDashboard
                 trainings={trainings}
                 onSelectTraining={handleSelectTraining}
@@ -4590,6 +4700,14 @@
                 onAddStatutoryRecord={handleAddStatutoryRecord}
                 onUpdateStatutoryRecord={handleUpdateStatutoryRecord}
                 onDeleteStatutoryRecord={handleDeleteStatutoryRecord}
+                activeTab={currentView === 'statutory' ? 'statutory' : 'sessions'}
+                onTabChange={(tab) => {
+                  if (tab === 'statutory') {
+                    handleNavigateToStatutory();
+                  } else {
+                    handleBackToDashboard();
+                  }
+                }}
               />
             )}
 
@@ -4597,6 +4715,7 @@
               <MobileSignView
                 training={activeTraining}
                 onBackToDashboard={handleBackToDashboard}
+                onNavigateToStatutory={handleNavigateToStatutory}
                 onSaveSignature={handleSaveSignature}
                 onAddNewStaffAndSign={handleAddNewStaffAndSign}
               />
