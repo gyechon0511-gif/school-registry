@@ -2414,10 +2414,10 @@
       return (
         <div className="space-y-6">
           {/* Top Banner */}
-          <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-teal-900 via-emerald-800 to-slate-900 p-6 sm:p-8 text-white shadow-xl">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-900 via-emerald-800 to-slate-900 bg-emerald-900 p-6 sm:p-8 text-white shadow-xl">
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-xs font-semibold backdrop-blur-xs">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-xs font-semibold backdrop-blur-sm">
                   <GraduationCapIcon className="w-3.5 h-3.5" />
                   <span>법정의무연수 이수 및 종이이수증 스캔본 관리대장</span>
                 </div>
@@ -4224,9 +4224,9 @@
       const [statutoryTrainings, setStatutoryTrainings] = useState(() => {
         try {
           const saved = localStorage.getItem(STORAGE_KEY_STATUTORY);
-          if (saved) {
+          if (saved !== null) {
             const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            if (Array.isArray(parsed)) return parsed;
           }
         } catch (e) {
           console.warn('LocalStorage error', e);
@@ -4266,19 +4266,14 @@
           if (!window.__FIREBASE_DB__ || !window.__FIREBASE_OPS__) return;
           const { collection, doc, onSnapshot, setDoc } = window.__FIREBASE_OPS__;
           const db = window.__FIREBASE_DB__;
+          let unsubTrainings = null;
+          let unsubStatutory = null;
 
           try {
             const trainingsCol = collection(db, 'trainings');
-            return onSnapshot(trainingsCol, async (snapshot) => {
+            unsubTrainings = onSnapshot(trainingsCol, async (snapshot) => {
               setIsCloudConnected(true);
               if (snapshot.empty) {
-                try {
-                  for (const item of INITIAL_TRAININGS) {
-                    await setDoc(doc(db, 'trainings', item.id), item);
-                  }
-                } catch (e) {
-                  console.warn('Seed error', e);
-                }
                 return;
               }
 
@@ -4295,6 +4290,33 @@
           } catch (e) {
             console.warn('Firestore setup error', e);
           }
+
+          try {
+            const statutoryCol = collection(db, 'statutoryTrainings');
+            unsubStatutory = onSnapshot(statutoryCol, async (snapshot) => {
+              setIsCloudConnected(true);
+              if (snapshot.empty) {
+                setStatutoryTrainings([]);
+                return;
+              }
+
+              const cloudList = [];
+              snapshot.forEach((snapDoc) => {
+                cloudList.push(snapDoc.data());
+              });
+              cloudList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+              setStatutoryTrainings(cloudList);
+            }, (err) => {
+              console.warn('Firestore statutory snapshot error', err);
+            });
+          } catch (e) {
+            console.warn('Firestore statutory setup error', e);
+          }
+
+          return () => {
+            if (unsubTrainings) unsubTrainings();
+            if (unsubStatutory) unsubStatutory();
+          };
         };
 
         if (window.__FIREBASE_DB__) {
