@@ -334,6 +334,12 @@
     const TrashIcon = ({ className }) => (
       <Icon className={className} path={<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />} />
     );
+    const DatabaseIcon = ({ className }) => (
+      <Icon className={className} path={<path d="M12 2C6.48 2 2 4.24 2 7v10c0 2.76 4.48 5 10 5s10-2.24 10-5V7c0-2.76-4.48-5-10-5zM2 12c0 2.76 4.48 5 10 5s10-2.24 10-5M2 7c0 2.76 4.48 5 10 5s10-2.24 10-5" />} />
+    );
+    const RotateCwIcon = ({ className }) => (
+      <Icon className={className} path={<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8M21 3v5h-5" />} />
+    );
 
     // Official School Emblem Component (Ultra-HD Vector + Custom Upload Image Support)
     const GyechonSchoolLogo = ({ className = 'w-16 h-16' }) => {
@@ -764,6 +770,185 @@
       );
     };
 
+    // Backup Scheduler Modal
+    const BackupSchedulerModal = ({ isOpen, onClose, isCloudConnected }) => {
+      const [meta, setMeta] = useState(() => getStoredBackupMeta());
+      const [designatedTime, setDesignatedTime] = useState(() => (meta && meta.designatedTime) || '00:00');
+      const [isBackingUp, setIsBackingUp] = useState(false);
+      const [saveFeedback, setSaveFeedback] = useState(null);
+
+      useEffect(() => {
+        if (!isOpen) return;
+        const current = getStoredBackupMeta();
+        setMeta(current);
+        setDesignatedTime((current && current.designatedTime) || '00:00');
+
+        const handleUpdate = (e) => {
+          if (e.detail) {
+            setMeta(e.detail);
+            if (e.detail.designatedTime) setDesignatedTime(e.detail.designatedTime);
+          }
+        };
+        window.addEventListener('backup-scheduler-updated', handleUpdate);
+        return () => window.removeEventListener('backup-scheduler-updated', handleUpdate);
+      }, [isOpen]);
+
+      if (!isOpen) return null;
+
+      const handleSaveTime = (e) => {
+        e.preventDefault();
+        const updated = setDesignatedBackupTime(designatedTime);
+        setMeta(updated);
+        setSaveFeedback('백업 시간이 매일 ' + designatedTime + ' KST로 저장되었습니다.');
+        setTimeout(() => setSaveFeedback(null), 3500);
+      };
+
+      const handleManualForceBackup = async () => {
+        setIsBackingUp(true);
+        try {
+          const res = await forceBackupToFirebase('manual');
+          setMeta(res);
+          setSaveFeedback('Firebase 클라우드로 강제 백업이 완료되었습니다.');
+          setTimeout(() => setSaveFeedback(null), 4000);
+        } catch (err) {
+          alert('백업 실패: ' + (err.message || '네트워크 상태를 확인해주세요.'));
+        } finally {
+          setIsBackingUp(false);
+        }
+      };
+
+      const formatLastTime = (timestamp) => {
+        if (!timestamp) return '백업 이력 없음 (대기 중)';
+        const d = new Date(timestamp);
+        return d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shadow-xs">
+                  <DatabaseIcon className="w-5 h-5 text-sky-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    자동 백업 스케줄러 & Firebase 동기화
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    로컬 스토리지 데이터를 매일 지정된 시간에 Firebase 클라우드로 강제 백업합니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {saveFeedback && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-2">
+                <CheckCircle2Icon className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{saveFeedback}</span>
+              </div>
+            )}
+
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <DatabaseIcon className="w-4 h-4 text-sky-600" />
+                  <span>백업 스케줄러 상태</span>
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>자동 백업 활성화됨</span>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+                <div className="p-3 bg-white rounded-xl border border-slate-200">
+                  <div className="text-[10px] text-slate-400 font-medium mb-0.5">매일 자동 백업 시간</div>
+                  <div className="text-sm font-black text-indigo-700 font-mono">
+                    {(meta && meta.designatedTime) || '00:00'} KST
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-slate-200">
+                  <div className="text-[10px] text-slate-400 font-medium mb-0.5">클라우드 연결</div>
+                  <div className="text-xs font-bold text-slate-800">
+                    {isCloudConnected ? (
+                      <span className="text-emerald-700">Firestore 정상 연결</span>
+                    ) : (
+                      <span className="text-amber-600">오프라인 모드</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-600 pt-1 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">최근 백업 일시:</span>
+                  <span className="font-semibold text-slate-700 font-mono">{formatLastTime(meta && meta.lastBackupTime)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">최근 백업 대상:</span>
+                  <span className="font-semibold text-slate-700">
+                    연수 {(meta && meta.trainingsCount) || 0}건 · 법정연수 {(meta && meta.statutoryCount) || 0}건 · 교표 마크
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveTime} className="space-y-3">
+              <label className="block text-xs font-bold text-slate-800">
+                매일 자동 백업 시간 변경
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="time"
+                  required
+                  value={designatedTime}
+                  onChange={(e) => setDesignatedTime(e.target.value)}
+                  onClick={(e) => {
+                    try {
+                      if (typeof e.currentTarget.showPicker === 'function') e.currentTarget.showPicker();
+                    } catch (err) {}
+                  }}
+                  className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-sky-500 font-mono cursor-pointer"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-sm transition active:scale-95"
+                >
+                  시간 저장
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-tight">
+                매일 해당 시각에 브라우저가 열려있을 때 로컬 스토리지의 모든 연수 및 법정연수 데이터를 Firebase Firestore에 자동으로 강제 업로드하여 영구 보존합니다.
+              </p>
+            </form>
+
+            <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-[11px] text-slate-500 text-center sm:text-left">
+                즉시 동기화가 필요한 경우 수동 강제 백업을 실행하세요.
+              </span>
+              <button
+                type="button"
+                onClick={handleManualForceBackup}
+                disabled={isBackingUp}
+                className="w-full sm:w-auto px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-sky-500/25 active:scale-95 transition disabled:opacity-50"
+              >
+                <RotateCwIcon className={"w-3.5 h-3.5 " + (isBackingUp ? 'animate-spin' : '')} />
+                <span>{isBackingUp ? 'Firebase 강제 동기화 중...' : '지금 Firebase로 강제 백업'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     // Academic Year Helper
     // 현재 날짜의 월이 2월 이하이면 이전 학년도, 3월 이상이면 현재 학년도로 자동 계산
     function getCurrentAcademicYear(refDate = new Date()) {
@@ -823,6 +1008,195 @@
         set.add(additionalYear.trim());
       }
       return Array.from(set).sort((a, b) => b.localeCompare(a));
+    }
+
+    function dateToISO(dateStr) {
+      if (!dateStr || !dateStr.trim()) {
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+      const clean = dateStr.trim();
+      if (/^d{4}-d{2}-d{2}$/.test(clean)) return clean;
+      const match = clean.match(/(d{4})[.-/년s]+(d{1,2})[.-/월s]+(d{1,2})/);
+      if (match) {
+        const y = match[1];
+        const m = String(parseInt(match[2], 10)).padStart(2, '0');
+        const d = String(parseInt(match[3], 10)).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+      const today = new Date();
+      return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    }
+
+    function isoToKoreanDate(isoStr) {
+      if (!isoStr || !isoStr.trim()) return '';
+      const parts = isoStr.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        const d = new Date(year, month - 1, day);
+        if (!isNaN(d.getTime())) {
+          const days = ['일', '월', '화', '수', '목', '금', '토'];
+          return year + '. ' + month + '. ' + day + '.(' + days[d.getDay()] + ')';
+        }
+      }
+      return isoStr;
+    }
+
+    function getTrainingDateTime(t) {
+      if (t && t.date) {
+        const match = t.date.match(/(d{4})[.-/년s]+(d{1,2})[.-/월s]+(d{1,2})/);
+        if (match) {
+          const year = parseInt(match[1], 10);
+          const month = parseInt(match[2], 10) - 1;
+          const day = parseInt(match[3], 10);
+          let timestamp = new Date(year, month, day).getTime();
+          if (t.time) {
+            const timeMatch = t.time.match(/(d{1,2}):(d{2})/);
+            if (timeMatch) {
+              timestamp += (parseInt(timeMatch[1], 10) * 3600 + parseInt(timeMatch[2], 10) * 60) * 1000;
+            }
+          }
+          return timestamp;
+        }
+      }
+      return (t && t.createdAt) || 0;
+    }
+
+    function sortTrainingsByDateAscending(list) {
+      if (!Array.isArray(list)) return [];
+      return [...list].sort((a, b) => {
+        const timeA = getTrainingDateTime(a);
+        const timeB = getTrainingDateTime(b);
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.createdAt || 0) - (b.createdAt || 0);
+      });
+    }
+
+    // --- Daily Auto-Backup Scheduler Functions ---
+    const BACKUP_META_STORAGE_KEY = 'gyechon_backup_scheduler_meta_v1';
+
+    function getTodayDateString(d = new Date()) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return year + '-' + month + '-' + day;
+    }
+
+    function getStoredBackupMeta() {
+      try {
+        const raw = localStorage.getItem(BACKUP_META_STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return {
+        lastBackupTime: 0,
+        lastBackupDate: '',
+        designatedTime: '00:00',
+        trainingsCount: 0,
+        statutoryCount: 0,
+        status: 'success',
+        message: '자동 백업 대기 중 (매일 지정 시간 KST)',
+        trigger: 'automatic'
+      };
+    }
+
+    function setDesignatedBackupTime(timeStr) {
+      const current = getStoredBackupMeta();
+      const updated = {
+        ...current,
+        designatedTime: timeStr || '00:00',
+        message: '자동 백업 스케줄러 설정됨 (매일 ' + (timeStr || '00:00') + ' KST)'
+      };
+      try {
+        localStorage.setItem(BACKUP_META_STORAGE_KEY, JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('backup-scheduler-updated', { detail: updated }));
+      } catch (e) {}
+      return updated;
+    }
+
+    async function forceBackupToFirebase(trigger = 'manual') {
+      if (!window.__FIREBASE_DB__ || !window.__FIREBASE_OPS__) {
+        throw new Error('Firebase 클라우드에 연결되지 않았습니다.');
+      }
+      const { doc, setDoc } = window.__FIREBASE_OPS__;
+      const db = window.__FIREBASE_DB__;
+      const now = new Date();
+      const todayStr = getTodayDateString(now);
+      const currentMeta = getStoredBackupMeta();
+
+      let localTrainings = [];
+      try {
+        const raw = localStorage.getItem('school_training_sessions_v2');
+        if (raw) localTrainings = JSON.parse(raw);
+      } catch (e) {}
+      if (!Array.isArray(localTrainings) || localTrainings.length === 0) {
+        localTrainings = INITIAL_TRAININGS;
+      }
+
+      let localStatutory = [];
+      try {
+        const raw = localStorage.getItem('school_statutory_trainings_v1');
+        if (raw) localStatutory = JSON.parse(raw);
+      } catch (e) {}
+
+      let customLogo = null;
+      try {
+        customLogo = localStorage.getItem('gyechon_school_custom_logo_v1');
+      } catch (e) {}
+
+      // 1. Force upload training sessions
+      for (const t of localTrainings) {
+        if (t && t.id) {
+          await setDoc(doc(db, 'trainings', t.id), t, { merge: true });
+        }
+      }
+
+      // 2. Force upload statutory training records
+      for (const s of localStatutory) {
+        if (s && s.id) {
+          await setDoc(doc(db, 'statutoryTrainings', s.id), s, { merge: true });
+        }
+      }
+
+      // 3. Force upload school emblem if exists
+      if (customLogo) {
+        await setDoc(doc(db, 'settings', 'schoolLogo'), {
+          customLogo,
+          updatedAt: Date.now()
+        }, { merge: true });
+      }
+
+      // 4. Create snapshot in backups collection
+      const backupDocId = 'backup_' + todayStr.replace(/-/g, '');
+      await setDoc(doc(db, 'backups', backupDocId), {
+        date: todayStr,
+        timestamp: Date.now(),
+        trigger,
+        trainingsCount: localTrainings.length,
+        statutoryCount: localStatutory.length,
+        trainings: localTrainings,
+        statutoryTrainings: localStatutory
+      }, { merge: true });
+
+      const newMeta = {
+        lastBackupTime: Date.now(),
+        lastBackupDate: todayStr,
+        designatedTime: currentMeta.designatedTime || '00:00',
+        trainingsCount: localTrainings.length,
+        statutoryCount: localStatutory.length,
+        status: 'success',
+        message: todayStr + ' ' + now.toLocaleTimeString('ko-KR') + ' Firebase 강제 백업 완료 (연수 ' + localTrainings.length + '건, 법정연수 ' + localStatutory.length + '건)',
+        trigger
+      };
+
+      localStorage.setItem(BACKUP_META_STORAGE_KEY, JSON.stringify(newMeta));
+      await setDoc(doc(db, 'settings', 'backup_status'), newMeta, { merge: true });
+      window.dispatchEvent(new CustomEvent('backup-scheduler-updated', { detail: newMeta }));
+      return newMeta;
     }
 
     // --- Base Data & Types ---
@@ -1067,14 +1441,15 @@
     }
 
     function buildAllTrainingsSheet(trainings) {
+      const sortedTrainings = sortTrainingsByDateAscending(trainings);
       const data = [
         ['계촌중학교 교직원 연수 개설 및 등록 현황 대장'],
-        [`기준일자: ${new Date().toLocaleDateString('ko-KR')}`, `총 개설 연수: ${trainings.length}건`],
+        [`기준일자: ${new Date().toLocaleDateString('ko-KR')}`, `총 개설 연수: ${sortedTrainings.length}건`],
         [],
         ['연번', '학년도', '연수 제목', '연수 일시', '시간', '장소', '주관/강사', '연수 대상', '서명 인원', '총 정원', '서명률(%)', '종이등록부 스캔본', '상태']
       ];
 
-      trainings.forEach((t, idx) => {
+      sortedTrainings.forEach((t, idx) => {
         const staffList = t.staffList || [];
         const signed = staffList.filter(s => !!s.signature).length;
         const total = staffList.length;
@@ -2233,9 +2608,68 @@
       const [formTrainingPeriod, setFormTrainingPeriod] = useState('');
       const [formCompletionNumber, setFormCompletionNumber] = useState('');
       const [formCompletionDate, setFormCompletionDate] = useState('');
+      const [completionDateISO, setCompletionDateISO] = useState('');
+      const [periodStartISO, setPeriodStartISO] = useState('');
+      const [periodEndISO, setPeriodEndISO] = useState('');
       const [formHours, setFormHours] = useState('15시간');
       const [formNote, setFormNote] = useState('');
       const [formFiles, setFormFiles] = useState([]);
+
+      const periodStartInputRef = useRef(null);
+      const periodEndInputRef = useRef(null);
+      const completionDateInputRef = useRef(null);
+
+      const formatIsoToDotDate = (iso) => {
+        if (!iso) return '';
+        const parts = iso.split('-');
+        if (parts.length === 3) {
+          return parts[0] + '. ' + parts[1] + '. ' + parts[2] + '.';
+        }
+        return iso;
+      };
+
+      const handlePeriodStartChange = (iso) => {
+        setPeriodStartISO(iso);
+        const startDot = formatIsoToDotDate(iso);
+        const endDot = formatIsoToDotDate(periodEndISO);
+        if (startDot && endDot) {
+          setFormTrainingPeriod(startDot + ' ~ ' + endDot);
+        } else if (startDot) {
+          setFormTrainingPeriod(startDot);
+        }
+      };
+
+      const handlePeriodEndChange = (iso) => {
+        setPeriodEndISO(iso);
+        const startDot = formatIsoToDotDate(periodStartISO);
+        const endDot = formatIsoToDotDate(iso);
+        if (startDot && endDot) {
+          setFormTrainingPeriod(startDot + ' ~ ' + endDot);
+        } else if (endDot) {
+          setFormTrainingPeriod(endDot);
+        }
+        if (!completionDateISO || completionDateISO === periodEndISO) {
+          setCompletionDateISO(iso);
+          setFormCompletionDate(endDot);
+        }
+      };
+
+      const handleCompletionDateChange = (iso) => {
+        setCompletionDateISO(iso);
+        setFormCompletionDate(formatIsoToDotDate(iso));
+      };
+
+      const openDatePicker = (ref) => {
+        try {
+          if (ref.current && typeof ref.current.showPicker === 'function') {
+            ref.current.showPicker();
+          } else {
+            ref.current?.focus();
+          }
+        } catch (e) {
+          ref.current?.focus();
+        }
+      };
 
       const academicYears = useMemo(() => {
         const set = new Set(records.map(r => r.academicYear || currentAcademicYear));
@@ -2276,6 +2710,9 @@
         const today = new Date();
         const y = today.getFullYear();
         const m = String(today.getMonth() + 1).padStart(2, '0');
+        setPeriodStartISO(y + '-' + m + '-01');
+        setPeriodEndISO(y + '-' + m + '-15');
+        setCompletionDateISO(y + '-' + m + '-15');
         setFormTrainingPeriod(y + '. ' + m + '. 01. ~ ' + y + '. ' + m + '. 15.');
         setFormCompletionNumber('제' + y + '-중앙-' + Math.floor(1000 + Math.random() * 9000) + '호');
         setFormCompletionDate(y + '. ' + m + '. 15.');
@@ -2294,6 +2731,15 @@
         setFormCyberSite(rec.cyberSite);
         setFormCourseName(rec.courseName);
         setFormTrainingPeriod(rec.trainingPeriod);
+        const periodParts = (rec.trainingPeriod || '').split('~');
+        if (periodParts.length >= 2) {
+          setPeriodStartISO(dateToISO(periodParts[0]));
+          setPeriodEndISO(dateToISO(periodParts[1]));
+        } else {
+          setPeriodStartISO(dateToISO(rec.trainingPeriod || ''));
+          setPeriodEndISO('');
+        }
+        setCompletionDateISO(dateToISO(rec.completionDate || ''));
         setFormCompletionNumber(rec.completionNumber);
         setFormCompletionDate(rec.completionDate || '');
         setFormHours(rec.hours ? '' + rec.hours : '');
@@ -2896,37 +3342,81 @@
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        교육기간 <span className="text-rose-500">*</span>
+                  {/* Training Period (Start Date ~ End Date with immediate Calendar Popups) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                        <CalendarIcon className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>교육기간 (시작일자 ~ 종료일자) <span className="text-rose-500">*</span></span>
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={formTrainingPeriod}
-                        onChange={(e) => setFormTrainingPeriod(e.target.value)}
-                        placeholder="예: 2026. 03. 10. ~ 2026. 03. 15."
-                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                      />
+                      <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        클릭 시 즉시 달력 팝업
+                      </span>
                     </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        이수(수료)번호 <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formCompletionNumber}
-                        onChange={(e) => setFormCompletionNumber(e.target.value)}
-                        placeholder="예: 제2026-중앙-0158호"
-                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono font-bold"
-                      />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="relative">
+                        <input
+                          ref={periodStartInputRef}
+                          type="date"
+                          required
+                          value={periodStartISO}
+                          onChange={(e) => handlePeriodStartChange(e.target.value)}
+                          onClick={() => openDatePicker(periodStartInputRef)}
+                          className="w-full px-3 py-2 pr-8 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold cursor-pointer text-slate-900"
+                          title="교육 시작일자 (클릭 시 즉시 달력 표시)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => openDatePicker(periodStartInputRef)}
+                          className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-emerald-600 transition cursor-pointer"
+                          title="달력 열기"
+                        >
+                          <CalendarIcon className="w-4 h-4 text-emerald-600" />
+                        </button>
+                        <span className="text-[10px] text-slate-500 block mt-0.5 ml-1">교육 시작일자</span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          ref={periodEndInputRef}
+                          type="date"
+                          required
+                          value={periodEndISO}
+                          onChange={(e) => handlePeriodEndChange(e.target.value)}
+                          onClick={() => openDatePicker(periodEndInputRef)}
+                          className="w-full px-3 py-2 pr-8 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold cursor-pointer text-slate-900"
+                          title="교육 종료일자 (클릭 시 즉시 달력 표시)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => openDatePicker(periodEndInputRef)}
+                          className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-emerald-600 transition cursor-pointer"
+                          title="달력 열기"
+                        >
+                          <CalendarIcon className="w-4 h-4 text-emerald-600" />
+                        </button>
+                        <span className="text-[10px] text-slate-500 block mt-0.5 ml-1">교육 종료일자</span>
+                      </div>
                     </div>
+                    <p className="mt-1 text-[11px] text-slate-500 font-medium">
+                      대장 등록 표기: <strong className="text-slate-800 font-mono">{formTrainingPeriod || '기간 미선택'}</strong>
+                    </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      이수(수료)번호 <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formCompletionNumber}
+                      onChange={(e) => setFormCompletionNumber(e.target.value)}
+                      placeholder="예: 제2026-중앙-0158호"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono font-bold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">이수시간</label>
                       <input
@@ -2938,14 +3428,39 @@
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">이수(발급)일자</label>
-                      <input
-                        type="text"
-                        value={formCompletionDate}
-                        onChange={(e) => setFormCompletionDate(e.target.value)}
-                        placeholder="예: 2026. 03. 15."
-                        className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl"
-                      />
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                          <CalendarIcon className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>이수(발급)일자</span>
+                        </label>
+                        <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          클릭 시 즉시 달력 팝업
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          ref={completionDateInputRef}
+                          type="date"
+                          value={completionDateISO}
+                          onChange={(e) => handleCompletionDateChange(e.target.value)}
+                          onClick={() => openDatePicker(completionDateInputRef)}
+                          className="w-full px-3 py-2 pr-8 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold cursor-pointer text-slate-900"
+                          title="이수일자 (클릭 시 즉시 달력 표시)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => openDatePicker(completionDateInputRef)}
+                          className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-emerald-600 transition cursor-pointer"
+                          title="달력 열기"
+                        >
+                          <CalendarIcon className="w-4 h-4 text-emerald-600" />
+                        </button>
+                      </div>
+                      {formCompletionDate && (
+                        <p className="mt-1 text-[11px] text-slate-500 font-medium">
+                          등록 표기: <strong className="text-slate-800 font-mono">{formCompletionDate}</strong>
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -3182,11 +3697,20 @@
 
       const [newAcademicYear, setNewAcademicYear] = useState(() => getCurrentAcademicYear());
       const [newTitle, setNewTitle] = useState('');
+      const [newDateISO, setNewDateISO] = useState(() => dateToISO());
       const [newDate, setNewDate] = useState(() => getKoreanTodayDateString());
       const [newTime, setNewTime] = useState('15:30 ~ 16:30');
       const [newLocation, setNewLocation] = useState('2층 도서관');
       const [newInstructor, setNewInstructor] = useState('');
       const [newTarget, setNewTarget] = useState('전 교직원');
+
+      const handleDateChange = (iso) => {
+        setNewDateISO(iso);
+        const koreanDate = isoToKoreanDate(iso);
+        setNewDate(koreanDate);
+        const matched = getAcademicYearFromDate(koreanDate);
+        if (matched) setNewAcademicYear(matched);
+      };
 
       const availableYears = useMemo(() => {
         const set = new Set();
@@ -3198,8 +3722,10 @@
       }, [trainings]);
 
       const filteredTrainings = useMemo(() => {
-        if (selectedAcademicYear === 'all') return trainings;
-        return trainings.filter(t => getAcademicYear(t) === selectedAcademicYear);
+        const list = selectedAcademicYear === 'all'
+          ? trainings
+          : trainings.filter(t => getAcademicYear(t) === selectedAcademicYear);
+        return [...list].sort((a, b) => getTrainingDateTime(a) - getTrainingDateTime(b));
       }, [trainings, selectedAcademicYear]);
 
       const totalScannedFiles = useMemo(() => {
@@ -3774,19 +4300,50 @@
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-bold text-slate-700 mb-1">일시</label>
-                      <input
-                        type="text"
-                        value={newDate}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNewDate(val);
-                          const matched = getAcademicYearFromDate(val);
-                          if (matched) setNewAcademicYear(matched);
-                        }}
-                        placeholder={'예: ' + getKoreanTodayDateString()}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none"
-                      />
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-bold text-slate-700">
+                          일자 <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[10px] text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                          클릭 시 즉시 달력 팝업
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          id="new-training-date-input"
+                          type="date"
+                          required
+                          value={newDateISO}
+                          onChange={(e) => handleDateChange(e.target.value)}
+                          onClick={(e) => {
+                            try {
+                              if (typeof e.currentTarget.showPicker === 'function') e.currentTarget.showPicker();
+                            } catch (err) {}
+                          }}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 pr-9 text-xs text-slate-900 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                          title="일자 (클릭 시 즉시 달력 표시)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const el = document.getElementById('new-training-date-input');
+                            try {
+                              if (el && typeof el.showPicker === 'function') el.showPicker();
+                              else el?.focus();
+                            } catch (e) {
+                              el?.focus();
+                            }
+                          }}
+                          className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-indigo-600 transition cursor-pointer"
+                          title="달력 열기"
+                        >
+                          <CalendarIcon className="w-4 h-4 text-indigo-600" />
+                        </button>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                        <CalendarIcon className="w-3 h-3 text-indigo-500 shrink-0" />
+                        <span>등록 표기: <strong className="text-slate-700">{newDate}</strong></span>
+                      </p>
                     </div>
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">시간</label>
@@ -3855,6 +4412,7 @@
     function EditTrainingModal({ isOpen, training, onClose, onSave }) {
       const [title, setTitle] = useState('');
       const [date, setDate] = useState('');
+      const [dateISO, setDateISO] = useState('');
       const [time, setTime] = useState('');
       const [location, setLocation] = useState('');
       const [instructor, setInstructor] = useState('');
@@ -3867,6 +4425,7 @@
         if (training) {
           setTitle(training.title || '');
           setDate(training.date || '');
+          setDateISO(dateToISO(training.date));
           setTime(training.time || '');
           setLocation(training.location || '');
           setInstructor(training.instructor || '');
@@ -3876,6 +4435,14 @@
           setAcademicYear(getAcademicYear(training));
         }
       }, [training]);
+
+      const handleDateChange = (iso) => {
+        setDateISO(iso);
+        const koreanDate = isoToKoreanDate(iso);
+        setDate(koreanDate);
+        const matched = getAcademicYearFromDate(koreanDate);
+        if (matched) setAcademicYear(matched);
+      };
 
       if (!isOpen || !training) return null;
 
@@ -3913,7 +4480,7 @@
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">연수등록부 정보 수정</h3>
-                  <p className="text-[11px] text-slate-500">개설된 연수의 제목, 학년도, 일시, 장소 등을 수정합니다.</p>
+                  <p className="text-[11px] text-slate-500">개설된 연수의 제목, 학년도, 일자, 장소 등을 수정합니다.</p>
                 </div>
               </div>
               <button
@@ -3960,17 +4527,50 @@
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    일시 <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    placeholder={'예: ' + getKoreanTodayDateString()}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">
+                      일자 <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      클릭 시 즉시 달력 팝업
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="edit-training-date-input"
+                      type="date"
+                      required
+                      value={dateISO}
+                      onChange={(e) => handleDateChange(e.target.value)}
+                      onClick={(e) => {
+                        try {
+                          if (typeof e.currentTarget.showPicker === 'function') e.currentTarget.showPicker();
+                        } catch (err) {}
+                      }}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 pr-9 text-xs text-slate-900 font-semibold focus:ring-2 focus:ring-amber-500 outline-none cursor-pointer"
+                      title="일자 (클릭 시 즉시 달력 표시)"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById('edit-training-date-input');
+                        try {
+                          if (el && typeof el.showPicker === 'function') el.showPicker();
+                          else el?.focus();
+                        } catch (e) {
+                          el?.focus();
+                        }
+                      }}
+                      className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-amber-600 transition cursor-pointer"
+                      title="달력 열기"
+                    >
+                      <CalendarIcon className="w-4 h-4 text-amber-600" />
+                    </button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                    <CalendarIcon className="w-3 h-3 text-amber-500 shrink-0" />
+                    <span>등록 표기: <strong className="text-slate-700">{date}</strong></span>
+                  </p>
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">시간</label>
@@ -4221,7 +4821,7 @@
             list = [created, ...list];
           }
         }
-        return list;
+        return sortTrainingsByDateAscending(list);
       });
 
       const [statutoryTrainings, setStatutoryTrainings] = useState(() => {
@@ -4245,6 +4845,7 @@
       const [qrModalTrainingId, setQrModalTrainingId] = useState(null);
       const [editingTraining, setEditingTraining] = useState(null);
       const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
+      const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
       const [isCloudConnected, setIsCloudConnected] = useState(false);
 
       useEffect(() => {
@@ -4262,6 +4863,51 @@
           console.warn('LocalStorage save error', e);
         }
       }, [statutoryTrainings]);
+
+      // Daily Automatic Backup Scheduler to Firebase
+      useEffect(() => {
+        const checkAndRunBackup = async () => {
+          if (!window.__FIREBASE_DB__ || !window.__FIREBASE_OPS__) return;
+          try {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const todayStr = getTodayDateString(now);
+            const meta = getStoredBackupMeta();
+
+            let designatedHour = 0;
+            let designatedMinute = 0;
+            if (meta && meta.designatedTime) {
+              const parts = meta.designatedTime.split(':').map(Number);
+              if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                designatedHour = parts[0];
+                designatedMinute = parts[1];
+              }
+            }
+
+            const alreadyBackedUpToday = meta.lastBackupDate === todayStr && meta.status === 'success';
+            const timeReached = currentHour > designatedHour || (currentHour === designatedHour && currentMinute >= designatedMinute);
+
+            if (!alreadyBackedUpToday && timeReached) {
+              console.log('[BackupScheduler] Scheduled daily backup executing...');
+              await forceBackupToFirebase('automatic');
+            }
+          } catch (e) {
+            console.warn('[BackupScheduler] Check error', e);
+          }
+        };
+
+        checkAndRunBackup();
+        const intervalId = window.setInterval(checkAndRunBackup, 60000);
+        const handleVis = () => {
+          if (document.visibilityState === 'visible') checkAndRunBackup();
+        };
+        document.addEventListener('visibilitychange', handleVis);
+        return () => {
+          window.clearInterval(intervalId);
+          document.removeEventListener('visibilitychange', handleVis);
+        };
+      }, []);
 
       // Firebase Firestore Real-Time Cross-Device Synchronization
       useEffect(() => {
@@ -4284,8 +4930,8 @@
               snapshot.forEach((snapDoc) => {
                 cloudList.push(snapDoc.data());
               });
-              cloudList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-              setTrainings(cloudList);
+              const sortedCloudList = sortTrainingsByDateAscending(cloudList);
+              setTrainings(sortedCloudList);
             }, (err) => {
               console.warn('Firestore snapshot error', err);
               setIsCloudConnected(false);
@@ -4419,7 +5065,7 @@
           staffList: BASE_STAFF_ROSTER.map(s => ({ ...s }))
         };
 
-        setTrainings(prev => [newTraining, ...prev.filter(t => t.id !== newTraining.id)]);
+        setTrainings(prev => sortTrainingsByDateAscending([newTraining, ...prev.filter(t => t.id !== newTraining.id)]));
         setActiveTrainingId(newTraining.id);
         setCurrentView('dashboard');
 
@@ -4469,7 +5115,7 @@
         const target = trainings.find(t => t.id === id);
         if (!target) return;
         const updatedSession = { ...target, ...updatedData };
-        setTrainings(prev => prev.map(t => (t.id === id ? updatedSession : t)));
+        setTrainings(prev => sortTrainingsByDateAscending(prev.map(t => (t.id === id ? updatedSession : t))));
         if (window.__FIREBASE_DB__ && window.__FIREBASE_OPS__) {
           try {
             const { doc, setDoc } = window.__FIREBASE_OPS__;
@@ -4612,9 +5258,7 @@
                 onClick={handleBackToDashboard}
                 className="flex items-center gap-2.5 cursor-pointer hover:opacity-90 transition-opacity"
               >
-                <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs">
-                  <SchoolIcon className="w-4 h-4" />
-                </div>
+                <GyechonSchoolLogo className="w-8 h-8 sm:w-9 sm:h-9 object-contain shrink-0 drop-shadow-xs" />
                 <div>
                   <div className="text-xs font-bold text-slate-900 leading-tight flex items-center gap-1.5">
                     <span>계촌중학교 연수 등록부</span>
@@ -4690,6 +5334,17 @@
                   <span className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
                   <span>{isCloudConnected ? '클라우드 실시간 동기화' : '로컬 모드'}</span>
                 </div>
+
+                {/* Daily Auto-Backup & Force Backup Button */}
+                <button
+                  onClick={() => setIsBackupModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-sky-800 bg-sky-50 hover:bg-sky-100 rounded-xl border border-sky-200 transition-colors shadow-xs cursor-pointer"
+                  title="로컬 스토리지 데이터를 Firebase 클라우드로 매일 지정된 시간에 자동 강제 백업합니다."
+                >
+                  <DatabaseIcon className="w-3.5 h-3.5 text-sky-600" />
+                  <span className="hidden sm:inline">클라우드 백업</span>
+                  <span className="sm:hidden">백업</span>
+                </button>
 
                 {/* School Emblem Customization Button */}
                 <button
@@ -4792,6 +5447,12 @@
           <SchoolLogoModal
             isOpen={isLogoModalOpen}
             onClose={() => setIsLogoModalOpen(false)}
+          />
+
+          <BackupSchedulerModal
+            isOpen={isBackupModalOpen}
+            onClose={() => setIsBackupModalOpen(false)}
+            isCloudConnected={isCloudConnected}
           />
         </div>
       );
